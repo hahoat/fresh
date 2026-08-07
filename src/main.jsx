@@ -34,6 +34,13 @@ const initialProducts = [
   { id: 'banh-mi', name: 'Bánh Mỳ Ấp Chảo Truyền Thống', category: 'Bánh Mỳ', price: 40000, sold: 14, revenue: 560000, accent: 'yellow', icon: '🥖', stock: 12 },
 ];
 
+function mergeMenuProducts(savedProducts) {
+  const saved = Array.isArray(savedProducts) && savedProducts.length ? savedProducts : [];
+  const ids = new Set(saved.map((product) => product.id));
+  const missing = initialProducts.filter((product) => !ids.has(product.id));
+  return saved.length ? [...saved, ...missing] : initialProducts;
+}
+
 const initialOrders = [
   { id: '#F-1048', customer: 'Khách tại quầy', table: 'Bàn 03', items: '2x Trà đào cam sả, 1x Tokbokki sốt cay', total: 115000, status: 'Đang xử lý', kitchenStatus: 'Chờ chế biến', time: '09:24', tone: 'pending' },
   { id: '#F-1047', customer: 'Nguyễn Minh', table: 'Bàn 05', items: '1x Khoai tây lắc phô mai, 2x Trà đào cam sả', total: 109000, status: 'Hoàn tất', kitchenStatus: 'Đã xong', time: '09:05', tone: 'success' },
@@ -424,7 +431,7 @@ function OrderDetail({ order, onClose, onStatusChange, onPrint }) {
 function App() {
   const [activeView, setActiveView] = useState('overview');
   const [persisted] = useState(readStoredState);
-  const [products, setProducts] = useState(() => Array.isArray(persisted.products) && persisted.products.length ? persisted.products : initialProducts);
+  const [products, setProducts] = useState(() => mergeMenuProducts(persisted.products));
   const [orders, setOrders] = useState(() => Array.isArray(persisted.orders) && persisted.orders.length ? persisted.orders : initialOrders);
   const [tables, setTables] = useState(() => Array.isArray(persisted.tables) && persisted.tables.length >= 20 ? persisted.tables : initialTables20);
   const [inventory, setInventory] = useState(() => Array.isArray(persisted.inventory) && persisted.inventory.length ? persisted.inventory : initialInventory);
