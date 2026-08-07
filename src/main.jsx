@@ -163,6 +163,7 @@ function readStoredState() {
 const toneForStatus = (status) => ({ 'Đang xử lý': 'pending', 'Hoàn tất': 'success', 'Đã hủy': 'cancelled' }[status] || 'pending');
 const tableToneForStatus = (status) => ({ Trống: 'success', 'Đang phục vụ': 'pending', 'Chờ thanh toán': 'warning', 'Đặt trước': 'reserved' }[status] || 'pending');
 const kitchenStageFor = (order) => order.kitchenStatus || (order.status === 'Hoàn tất' ? 'Đã xong' : 'Chờ chế biến');
+const nextOrderId = (orders) => `#F-${Math.max(1048, ...orders.map((order) => Number(String(order.id || '').replace(/\D/g, '')) || 0)) + 1}`;
 
 function Icon({ name, size = 20, strokeWidth = 1.8 }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
@@ -316,7 +317,7 @@ function QuantityControl({ quantity, onDecrease, onIncrease, disabled = false })
   </div>;
 }
 
-function QuickOrderPanel({ products, basket, onQuantityChange, onCheckout, full = false, contextLabel = '' }) {
+function QuickOrderPanel({ products, basket, onQuantityChange, onConfirmOrder, onPayment, canPay = false, paymentTotal = 0, full = false, contextLabel = '' }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Tất cả');
   const [showAll, setShowAll] = useState(!contextLabel);
@@ -339,7 +340,7 @@ function QuickOrderPanel({ products, basket, onQuantityChange, onCheckout, full 
       {filteredProducts.map((product) => <div className="quick-product" key={product.id}><ProductArt product={product} small /><div className="quick-product-info"><strong>{product.name}</strong><span>{money(product.price)}</span></div><QuantityControl quantity={basket[product.id] || 0} onDecrease={() => onQuantityChange(product.id, -1)} onIncrease={() => onQuantityChange(product.id, 1)} /></div>)}
       {filteredProducts.length === 0 && <div className="empty-state small-empty"><Icon name="search" size={22} /><p>Không tìm thấy món phù hợp</p></div>}
     </div>
-    <div className="basket-summary"><div><span>Tổng cộng ({totalItems} món)</span><strong>{money(total)}</strong></div><button className="primary-button full-button" onClick={onCheckout} disabled={!totalItems}><Icon name="cart" size={18} /> Tạo đơn</button></div>
+    <div className="basket-summary"><div><span>Món đang chọn ({totalItems} món)</span><strong>{money(total)}</strong></div>{contextLabel && canPay && <div className="pending-total"><span>Đã gọi trước đó</span><strong>{money(paymentTotal)}</strong></div>}<div className="order-action-buttons"><button className="outline-button full-button" onClick={onConfirmOrder} disabled={!totalItems}><Icon name="check" size={18} /> Xác nhận gọi món</button>{contextLabel && <button className="primary-button full-button" onClick={onPayment} disabled={!canPay}><Icon name="dollar" size={18} /> Thanh toán khi khách ăn xong</button>}</div></div>
   </section>;
 }
 
@@ -361,11 +362,11 @@ function TableSnapshot({ tables, onNavigate }) {
   return <section className="table-snapshot"><SectionHeading title="Tình trạng bàn" action="Mở sơ đồ bàn" onAction={() => onNavigate('tables')} /><div className="table-summary-grid">{tableCounts.map((item) => <div className={`table-summary-item ${item.tone}`} key={item.label}><strong>{item.value}</strong><span>{item.label}</span></div>)}</div><div className="table-mini-list">{occupiedTables.map((table) => <button className="table-mini-item" key={table.id} onClick={() => onNavigate('tables')}><span className="table-mini-name"><strong>{table.name}</strong><small>{table.seats} chỗ · {table.zone}</small></span><StatusBadge tone={tableToneForStatus(table.status)}>{table.status}</StatusBadge></button>)}{occupiedTables.length === 0 && <p className="table-mini-empty">Tất cả bàn đang sẵn sàng đón khách.</p>}</div></section>;
 }
 
-function Overview({ products, orders, tables, basket, stats, onQuantityChange, onCheckout, onNavigate, onSelectOrder }) {
+function Overview({ products, orders, tables, basket, stats, onQuantityChange, onConfirmOrder, onNavigate, onSelectOrder }) {
   return <div className="page-content overview-page">
     <div className="welcome-row"><div><h2>Chào buổi sáng, Fresh</h2><p>Thứ Năm, 07 tháng 08, 2026</p></div><button className="primary-button" onClick={() => onNavigate('sales')}><Icon name="plus" size={18} /> Tạo đơn mới</button></div>
     <div className="stats-grid"><StatCard label="Doanh thu hôm nay" value={money(stats.revenue)} change={stats.revenue ? '18,6%' : 'Chưa có dữ liệu'} icon="dollar" /><StatCard label="Đơn hàng hôm nay" value={stats.orders} change={stats.orders ? '12,5%' : 'Chưa có dữ liệu'} icon="cart" /><StatCard label="Giá trị trung bình" value={money(stats.average)} change={stats.average ? '4,3%' : 'Chưa có dữ liệu'} trend="down" icon="trendUp" /></div>
-    <div className="dashboard-grid"><div className="main-column"><TableSnapshot tables={tables} onNavigate={onNavigate} /><section className="chart-panel"><SectionHeading title="Doanh thu 7 ngày" /><RevenueChart /></section><section className="orders-panel"><SectionHeading title="Đơn hàng gần đây" action="Xem tất cả" onAction={() => onNavigate('orders')} /><OrderList orders={orders} onSelect={onSelectOrder} /></section><BestSellers products={products} onNavigate={onNavigate} /></div><div className="order-rail"><QuickOrderPanel products={products} basket={basket} onQuantityChange={onQuantityChange} onCheckout={onCheckout} /></div></div>
+    <div className="dashboard-grid"><div className="main-column"><TableSnapshot tables={tables} onNavigate={onNavigate} /><section className="chart-panel"><SectionHeading title="Doanh thu 7 ngày" /><RevenueChart /></section><section className="orders-panel"><SectionHeading title="Đơn hàng gần đây" action="Xem tất cả" onAction={() => onNavigate('orders')} /><OrderList orders={orders} onSelect={onSelectOrder} /></section><BestSellers products={products} onNavigate={onNavigate} /></div><div className="order-rail"><QuickOrderPanel products={products} basket={basket} onQuantityChange={onQuantityChange} onConfirmOrder={onConfirmOrder} /></div></div>
   </div>;
 }
 
@@ -390,7 +391,7 @@ const nextKitchenStage = { 'Chờ chế biến': 'Đang chế biến', 'Đang ch
 
 function KitchenTicket({ order, onStageChange, onSelectOrder }) {
   const stage = kitchenStageFor(order);
-  return <article className="kitchen-ticket"><div className="kitchen-ticket-head"><strong>{order.id}</strong><time>{order.time}</time></div><div className="kitchen-ticket-context"><span>{order.table || 'Mang đi'}</span><span>{order.customer}</span></div><p>{order.items}</p><div className="kitchen-ticket-foot">{nextKitchenStage[stage] ? <button className="primary-button" onClick={() => onStageChange(order.id, nextKitchenStage[stage])}>{stage === 'Chờ chế biến' ? 'Bắt đầu chế biến' : 'Đánh dấu đã xong'} <Icon name="arrow" size={14} /></button> : <StatusBadge tone="success">Đã hoàn tất</StatusBadge>}<button className="icon-button small-icon" onClick={() => onSelectOrder(order)} aria-label={`Xem ${order.id}`}><Icon name="chevron" size={17} /></button></div></article>;
+  return <article className={`kitchen-ticket ${order.orderType === 'additional' ? 'is-additional' : ''}`}><div className="kitchen-ticket-head"><strong>{order.id}</strong><time>{order.time}</time></div><div className="kitchen-ticket-context"><span>{order.orderType === 'additional' ? 'Gọi thêm · ' : ''}{order.table || 'Mang đi'}</span><span>{order.customer}</span></div><p>{order.items}</p><div className="kitchen-ticket-foot">{nextKitchenStage[stage] ? <button className="primary-button" onClick={() => onStageChange(order.id, nextKitchenStage[stage])}>{stage === 'Chờ chế biến' ? 'Bắt đầu chế biến' : 'Đánh dấu đã xong'} <Icon name="arrow" size={14} /></button> : <StatusBadge tone="success">Đã hoàn tất</StatusBadge>}<button className="icon-button small-icon" onClick={() => onSelectOrder(order)} aria-label={`Xem ${order.id}`}><Icon name="chevron" size={17} /></button></div></article>;
 }
 
 function KitchenPage({ orders, searchValue, onSearch, onStageChange, onSelectOrder }) {
@@ -433,10 +434,10 @@ function AccountFormModal({ onClose, onSave }) {
   return <div className="modal-backdrop" onClick={onClose}><form className="form-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>Tài khoản đăng nhập</span><h2>Tạo tài khoản mới</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div><div className="form-grid"><label><span>Tên đăng nhập</span><input value={draft.username} onChange={(event) => update('username', event.target.value)} placeholder="phucvu02" autoFocus /></label><label><span>Tên hiển thị</span><input value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="Nhân viên mới" /></label><label><span>Vai trò</span><select value={draft.role} onChange={(event) => update('role', event.target.value)}><option value="staff">Nhân viên gọi món</option><option value="kitchen">Bếp</option><option value="manager">Quản lý</option></select></label><label><span>Mật khẩu</span><input type="password" value={draft.password} onChange={(event) => update('password', event.target.value)} placeholder="Tối thiểu 6 ký tự" /></label></div><p className="form-hint">Mật khẩu được mã hóa trên máy chủ, không lưu dạng văn bản.</p><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Hủy</button><button type="submit" className="primary-button" disabled={!canSave}>Tạo tài khoản</button></div></form></div>;
 }
 
-function SalesPage({ products, basket, activeTable, onQuantityChange, onCheckout, onNavigate }) {
+function SalesPage({ products, basket, activeTable, onQuantityChange, onConfirmOrder, onPayment, canPay, paymentTotal, onNavigate }) {
   const [category, setCategory] = useState('Tất cả');
   const visibleProducts = category === 'Tất cả' ? products : products.filter((product) => product.category === category);
-  return <div className="page-content sales-page"><div className="page-intro"><div><h2>Bán hàng</h2><p>Chọn món để thêm vào đơn mới.</p></div><div className="sales-context-actions">{activeTable ? <span className="table-context"><Icon name="table" size={16} /> {activeTable.name} · {activeTable.seats} chỗ</span> : <button className="outline-button" onClick={() => onNavigate('tables')}><Icon name="table" size={16} /> Chọn bàn</button>}<span className="live-status"><span /> Đang mở cửa</span></div></div><div className="sales-layout"><div className="sales-catalog"><div className="catalog-header"><div><h3>Thực đơn hôm nay</h3><p>{visibleProducts.length} món đang hiển thị</p></div><select className="select-control" value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Lọc thực đơn">{categories.map((item) => <option key={item}>{item}</option>)}</select></div><div className="catalog-grid">{visibleProducts.map((product) => <article className="catalog-product" key={product.id}><ProductArt product /><div className="catalog-product-body"><div><span className="product-category">{product.category}</span><h3>{product.name}</h3><strong>{money(product.price)}</strong></div><button className="add-product-button" onClick={() => onQuantityChange(product.id, 1)} aria-label={`Thêm ${product.name}`}><Icon name="plus" size={17} /></button></div></article>)}</div>{visibleProducts.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Chưa có món trong danh mục này</p></div>}</div><QuickOrderPanel products={products} basket={basket} onQuantityChange={onQuantityChange} onCheckout={onCheckout} contextLabel={activeTable?.name} full /></div></div>;
+  return <div className="page-content sales-page"><div className="page-intro"><div><h2>Bán hàng</h2><p>Chọn món để thêm vào đơn mới.</p></div><div className="sales-context-actions">{activeTable ? <span className="table-context"><Icon name="table" size={16} /> {activeTable.name} · {activeTable.seats} chỗ</span> : <button className="outline-button" onClick={() => onNavigate('tables')}><Icon name="table" size={16} /> Chọn bàn</button>}<span className="live-status"><span /> Đang mở cửa</span></div></div><div className="sales-layout"><div className="sales-catalog"><div className="catalog-header"><div><h3>Thực đơn hôm nay</h3><p>{visibleProducts.length} món đang hiển thị</p></div><select className="select-control" value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Lọc thực đơn">{categories.map((item) => <option key={item}>{item}</option>)}</select></div><div className="catalog-grid">{visibleProducts.map((product) => <article className="catalog-product" key={product.id}><ProductArt product /><div className="catalog-product-body"><div><span className="product-category">{product.category}</span><h3>{product.name}</h3><strong>{money(product.price)}</strong></div><button className="add-product-button" onClick={() => onQuantityChange(product.id, 1)} aria-label={`Thêm ${product.name}`}><Icon name="plus" size={17} /></button></div></article>)}</div>{visibleProducts.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Chưa có món trong danh mục này</p></div>}</div><QuickOrderPanel products={products} basket={basket} onQuantityChange={onQuantityChange} onConfirmOrder={onConfirmOrder} onPayment={onPayment} canPay={canPay} paymentTotal={paymentTotal} contextLabel={activeTable?.name} full /></div></div>;
 }
 
 function ProductsPage({ products, searchValue, onSearch, onCreateProduct, onEditProduct, onDeleteProduct }) {
@@ -471,14 +472,12 @@ function ProductFormModal({ product, onClose, onSave }) {
   return <div className="modal-backdrop" onClick={onClose}><form className="form-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>{product ? 'Chỉnh sửa thông tin' : 'Thêm sản phẩm mới'}</span><h2>{product ? product.name : 'Món mới'}</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div><div className="form-grid"><label><span>Tên sản phẩm</span><input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} placeholder="Ví dụ: Gà viên phô mai" autoFocus /></label><label><span>Danh mục</span><select value={draft.category} onChange={(event) => updateDraft('category', event.target.value)}>{categories.slice(1).map((item) => <option key={item}>{item}</option>)}</select></label><label><span>Giá bán (₫)</span><input type="number" min="0" step="1000" value={draft.price} onChange={(event) => updateDraft('price', event.target.value)} placeholder="35000" /></label><label><span>Tồn kho</span><input type="number" min="0" step="1" value={draft.stock} onChange={(event) => updateDraft('stock', event.target.value)} placeholder="20" /></label><label><span>Biểu tượng món</span><input value={draft.icon} onChange={(event) => updateDraft('icon', event.target.value)} placeholder="🍡" maxLength="4" /></label><label><span>Màu hiển thị</span><select value={draft.accent} onChange={(event) => updateDraft('accent', event.target.value)}><option value="orange">Cam</option><option value="green">Xanh</option><option value="red">Đỏ</option><option value="lime">Xanh chanh</option><option value="yellow">Vàng</option><option value="lemon">Vàng chanh</option><option value="purple">Tím</option></select></label></div><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Hủy</button><button type="submit" className="primary-button" disabled={!canSave}>{product ? 'Lưu thay đổi' : 'Thêm sản phẩm'}</button></div></form></div>;
 }
 
-function CheckoutModal({ products, basket, activeTable, onClose, onConfirm }) {
-  const [customer, setCustomer] = useState('Khách tại quầy');
+function CheckoutModal({ paymentOrders = [], activeTable, onClose, onConfirm }) {
   const [payment, setPayment] = useState('Tiền mặt');
   const [note, setNote] = useState('');
-  const items = products.filter((product) => basket[product.id] > 0);
-  const total = items.reduce((sum, product) => sum + product.price * basket[product.id], 0);
-  const submit = (event) => { event.preventDefault(); onConfirm({ customer: customer.trim() || 'Khách tại quầy', payment, note: note.trim() }); };
-  return <div className="modal-backdrop" onClick={onClose}><form className="form-modal checkout-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>Hoàn tất đơn hàng</span><h2>Xác nhận thanh toán</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div>{activeTable && <div className="checkout-table-banner"><Icon name="table" size={18} /><div><span>Bàn phục vụ</span><strong>{activeTable.name}</strong></div></div>}<div className="checkout-items">{items.map((product) => <div className="checkout-item" key={product.id}><span>{basket[product.id]}x {product.name}</span><strong>{money(product.price * basket[product.id])}</strong></div>)}</div><div className="checkout-total"><span>Tổng thanh toán</span><strong>{money(total)}</strong></div><div className="form-grid"><label><span>Tên khách hàng</span><input value={customer} onChange={(event) => setCustomer(event.target.value)} /></label><label><span>Phương thức thanh toán</span><select value={payment} onChange={(event) => setPayment(event.target.value)}><option>Tiền mặt</option><option>Chuyển khoản</option><option>Ví điện tử</option></select></label><label className="full-field"><span>Ghi chú đơn hàng</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ví dụ: ít cay, giao tại quầy..." rows="2" /></label></div><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Quay lại</button><button type="submit" className="primary-button"><Icon name="check" size={17} /> Xác nhận tạo đơn</button></div></form></div>;
+  const total = paymentOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const submit = (event) => { event.preventDefault(); onConfirm({ payment, note: note.trim() }); };
+  return <div className="modal-backdrop" onClick={onClose}><form className="form-modal checkout-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>Thanh toán bàn</span><h2>Xác nhận thanh toán</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div>{activeTable && <div className="checkout-table-banner"><Icon name="table" size={18} /><div><span>Bàn phục vụ</span><strong>{activeTable.name}</strong><small>{paymentOrders.length} lần gọi món chưa thanh toán</small></div></div>}<div className="checkout-items">{paymentOrders.map((order) => <div className="checkout-item" key={order.id}><span>{order.orderType === 'additional' ? 'Gọi thêm · ' : ''}{order.items}</span><strong>{money(order.total)}</strong></div>)}</div><div className="checkout-total"><span>Tổng thanh toán</span><strong>{money(total)}</strong></div><div className="form-grid"><label><span>Phương thức thanh toán</span><select value={payment} onChange={(event) => setPayment(event.target.value)}><option>Tiền mặt</option><option>Chuyển khoản</option><option>Ví điện tử</option></select></label><label className="full-field"><span>Ghi chú thanh toán</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ví dụ: khách đã thanh toán đủ..." rows="2" /></label></div><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Quay lại</button><button type="submit" className="primary-button"><Icon name="dollar" size={17} /> Xác nhận thanh toán</button></div></form></div>;
 }
 
 function MobileMenuSheet({ open, activeView, onNavigate, onClose, items = navItems }) {
@@ -581,6 +580,11 @@ function App({ user, onLogout }) {
   const skipSyncRef = useRef(false);
   const syncTimerRef = useRef(null);
   const syncSharedStateRef = useRef(null);
+  const activeTableOrders = useMemo(() => {
+    if (!activeTable?.id) return [];
+    return orders.filter((order) => (order.tableId === activeTable.id || order.table === activeTable.name) && order.paymentStatus !== 'paid' && order.status !== 'Đã hủy');
+  }, [orders, activeTable]);
+  const activeTableTotal = activeTableOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
 
   sharedStateRef.current = sharedState;
 
@@ -758,16 +762,13 @@ function App({ user, onLogout }) {
       return { ...current, [productId]: Math.max(0, (current[productId] || 0) + amount) };
     });
   };
-  const openCheckout = () => {
-    const items = products.filter((product) => basket[product.id] > 0);
-    if (items.length) setCheckoutOpen(true);
-  };
-  const completeCheckout = ({ customer, payment, note }) => {
+  const confirmOrder = () => {
     const items = products.filter((product) => basket[product.id] > 0);
     const total = items.reduce((sum, product) => sum + product.price * basket[product.id], 0);
     if (!items.length) return;
-    const newOrderNumber = 1049 + Math.max(0, orders.length - initialOrders.length);
-    const newOrder = { id: `#F-${newOrderNumber}`, customer, table: activeTable?.name || 'Mang đi', items: items.map((item) => `${basket[item.id]}x ${item.name}`).join(', '), total, payment, note, status: 'Đang xử lý', kitchenStatus: 'Chờ chế biến', time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }), tone: 'pending' };
+    const isAdditional = Boolean(activeTable?.id && activeTableOrders.length);
+    const orderTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const newOrder = { id: nextOrderId(orders), customer: activeTable?.id ? 'Khách tại bàn' : 'Khách tại quầy', table: activeTable?.name || 'Mang đi', tableId: activeTable?.id || null, items: items.map((item) => `${basket[item.id]}x ${item.name}`).join(', '), total, paymentStatus: 'unpaid', orderType: isAdditional ? 'additional' : 'new', status: 'Đang xử lý', kitchenStatus: 'Chờ chế biến', time: orderTime, tone: 'pending' };
     setOrders((current) => [newOrder, ...current]);
     setProducts((current) => current.map((product) => {
       const quantity = basket[product.id] || 0;
@@ -776,11 +777,29 @@ function App({ user, onLogout }) {
     setBasket({});
     setCheckoutOpen(false);
     if (activeTable?.id) {
-      setTables((current) => current.map((table) => table.id === activeTable.id ? { ...table, status: 'Đang phục vụ', orderId: newOrder.id, total, since: newOrder.time } : table));
+      setTables((current) => current.map((table) => table.id === activeTable.id ? { ...table, status: 'Đang phục vụ', orderId: newOrder.id, total: activeTableTotal + total, since: table.since || newOrder.time } : table));
     }
+    if (!activeTable?.id) setActiveTable(null);
+    setActiveView(deviceMode === 'staff' ? 'tables' : 'orders');
+    notify(isAdditional ? `Đã gửi gọi thêm cho bếp ${activeTable.name}: ${newOrder.items}` : `Đã xác nhận ${newOrder.id}; bếp đã nhận món`);
+  };
+  const openPayment = () => {
+    if (!activeTable?.id || !activeTableOrders.length) {
+      notify('Bàn này chưa có món chưa thanh toán.');
+      return;
+    }
+    setCheckoutOpen(true);
+  };
+  const completePayment = ({ payment, note }) => {
+    if (!activeTable?.id || !activeTableOrders.length) return;
+    const payableIds = new Set(activeTableOrders.map((order) => order.id));
+    const paidAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    setOrders((current) => current.map((order) => payableIds.has(order.id) ? { ...order, status: 'Hoàn tất', tone: 'success', paymentStatus: 'paid', payment, note, paidAt } : order));
+    setTables((current) => current.map((table) => table.id === activeTable.id ? { ...table, status: 'Trống', orderId: null, total: 0, since: null } : table));
+    setCheckoutOpen(false);
     setActiveTable(null);
     setActiveView(deviceMode === 'staff' ? 'tables' : 'orders');
-    notify(`Đã tạo đơn ${newOrder.id} thành công`);
+    notify(`Đã thanh toán ${activeTable.name} · ${money(activeTableTotal)}`);
   };
   const saveProduct = (draft) => {
     const product = { ...draft, id: draft.id || `product-${Date.now()}` };
@@ -869,9 +888,9 @@ function App({ user, onLogout }) {
   const stats = { revenue: todayRevenue, orders: todayOrderCount, average: todayOrderCount ? Math.round(todayRevenue / todayOrderCount) : 0 };
 
   let content;
-  if (activeView === 'overview') content = <Overview products={products} orders={orders} tables={tables} stats={stats} basket={basket} onQuantityChange={changeQuantity} onCheckout={openCheckout} onNavigate={navigate} onSelectOrder={setSelectedOrder} />;
+  if (activeView === 'overview') content = <Overview products={products} orders={orders} tables={tables} stats={stats} basket={basket} onQuantityChange={changeQuantity} onConfirmOrder={confirmOrder} onNavigate={navigate} onSelectOrder={setSelectedOrder} />;
   if (activeView === 'tables') content = <TablesPage tables={tables} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectTable={selectTable} />;
-  if (activeView === 'sales') content = <SalesPage products={products} basket={basket} activeTable={activeTable} onQuantityChange={changeQuantity} onCheckout={openCheckout} onNavigate={navigate} />;
+  if (activeView === 'sales') content = <SalesPage products={products} basket={basket} activeTable={activeTable} onQuantityChange={changeQuantity} onConfirmOrder={confirmOrder} onPayment={openPayment} canPay={Boolean(activeTable?.id && activeTableOrders.length)} paymentTotal={activeTableTotal} onNavigate={navigate} />;
   if (activeView === 'kitchen') content = <KitchenPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onStageChange={updateKitchenStage} onSelectOrder={setSelectedOrder} />;
   if (activeView === 'products') content = <ProductsPage products={products} searchValue={globalSearch} onSearch={setGlobalSearch} onCreateProduct={() => setProductModal({ open: true, product: null })} onEditProduct={(product) => setProductModal({ open: true, product })} onDeleteProduct={deleteProduct} />;
   if (activeView === 'staff') content = <StaffPage staff={staff} accounts={accounts} searchValue={globalSearch} onSearch={setGlobalSearch} onCreate={() => setStaffModal({ open: true, staff: null })} onCreateAccount={() => setAccountModalOpen(true)} onEdit={(person) => setStaffModal({ open: true, staff: person })} onToggle={toggleStaff} onDelete={deleteStaff} onResetData={resetOperationalData} />;
@@ -879,7 +898,7 @@ function App({ user, onLogout }) {
   if (activeView === 'orders') content = <OrdersPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectOrder={setSelectedOrder} onExport={exportOrders} />;
   if (activeView === 'reports') content = <ReportsPage stats={stats} products={products} orders={orders} />;
 
-  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} items={visibleNavItems} user={user} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} deviceMode={deviceMode} syncStatus={syncStatus} onReconnect={reconnectServer} user={user} onLogout={onLogout} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} items={visibleNavItems} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} items={visibleNavItems} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{accountModalOpen && <AccountFormModal onClose={() => setAccountModalOpen(false)} onSave={saveAccount} />}{checkoutOpen && <CheckoutModal products={products} basket={basket} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completeCheckout} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
+  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} items={visibleNavItems} user={user} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} deviceMode={deviceMode} syncStatus={syncStatus} onReconnect={reconnectServer} user={user} onLogout={onLogout} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} items={visibleNavItems} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} items={visibleNavItems} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{accountModalOpen && <AccountFormModal onClose={() => setAccountModalOpen(false)} onSave={saveAccount} />}{checkoutOpen && <CheckoutModal paymentOrders={activeTableOrders} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completePayment} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
 }
 
 createRoot(document.getElementById('root')).render(<AuthGate />);
