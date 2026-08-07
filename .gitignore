@@ -4,3 +4,4 @@ data/fresh-data.json
 data/fresh-data.json.tmp
 data/fresh-users.json
 data/fresh-users.json.tmp
+.wrangler/
