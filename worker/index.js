@@ -10,7 +10,8 @@ const DEFAULT_USERS = [
   { id: 'user-3', username: 'bep', name: 'Bếp Fresh', role: 'kitchen', password: 'bep12345' },
 ];
 const EMPTY_STATE = { version: 3, products: [], orders: [], tables: [], inventory: [], staff: [] };
-const PASSWORD_ITERATIONS = 120000;
+// Cloudflare Workers currently accepts PBKDF2 iteration counts up to 100000.
+const PASSWORD_ITERATIONS = 100000;
 const MAX_BODY_SIZE = 8 * 1024 * 1024;
 const databaseReady = new WeakMap();
 
