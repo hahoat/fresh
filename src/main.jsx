@@ -280,17 +280,20 @@ function QuantityControl({ quantity, onDecrease, onIncrease, disabled = false })
 function QuickOrderPanel({ products, basket, onQuantityChange, onCheckout, full = false, contextLabel = '' }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Tất cả');
+  const [showAll, setShowAll] = useState(!contextLabel);
+  useEffect(() => { setShowAll(!contextLabel); }, [contextLabel]);
   const filteredProducts = useMemo(() => products.filter((product) => {
     const matchesCategory = category === 'Tất cả' || product.category === category;
     const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
-  }), [products, category, search]);
+    const matchesBasket = showAll || basket[product.id] > 0;
+    return matchesCategory && matchesSearch && matchesBasket;
+  }), [products, category, search, basket, showAll]);
   const basketItems = products.filter((product) => basket[product.id] > 0);
   const totalItems = basketItems.reduce((sum, product) => sum + basket[product.id], 0);
   const total = basketItems.reduce((sum, product) => sum + product.price * basket[product.id], 0);
 
   return <section className={`quick-order-panel ${full ? 'full' : ''}`}>
-    <SectionHeading title={contextLabel ? `Gọi món · ${contextLabel}` : 'Tạo đơn nhanh'} />
+    <SectionHeading title={contextLabel ? `Gọi món · ${contextLabel}` : 'Tạo đơn nhanh'} action={contextLabel ? (showAll ? 'Chỉ món đã gọi' : 'Thêm món') : undefined} onAction={() => setShowAll((current) => !current)} />
     <label className="local-search"><Icon name="search" size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm món ăn hoặc đồ uống" /></label>
     <div className="category-tabs">{categories.map((item) => <button key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
     <div className="quick-product-list">
