@@ -358,6 +358,14 @@ async function handleApi(request, env) {
     return createUser(request, env);
   }
 
+  if (pathname === '/api/admin/reset' && request.method === 'POST') {
+    const result = await requireRole(request, env, ['manager']);
+    if (result.error) return result.error;
+    const body = await readJsonBody(request);
+    if (body.confirm !== 'RESET_FRESH') return errorResponse('Cần xác nhận RESET_FRESH để đặt lại dữ liệu vận hành.');
+    return jsonResponse({ ok: true, reset: true, ...(await saveState(env.DB, EMPTY_STATE)) });
+  }
+
   if (pathname === '/api/state' && request.method === 'GET') {
     const user = await requireUser(request, env);
     if (!user) return errorResponse('Phiên đăng nhập không hợp lệ hoặc đã hết hạn.', 401);
