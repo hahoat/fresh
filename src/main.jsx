@@ -5,7 +5,6 @@ import './styles.css';
 const navItems = [
   { id: 'overview', label: 'Tổng quan', icon: 'dashboard' },
   { id: 'tables', label: 'Bàn ăn', icon: 'table' },
-  { id: 'sales', label: 'Bán hàng', icon: 'cart' },
   { id: 'kitchen', label: 'Màn hình bếp', icon: 'chef' },
   { id: 'products', label: 'Thực đơn', icon: 'box' },
   { id: 'staff', label: 'Nhân viên', icon: 'users' },
