@@ -156,13 +156,6 @@ const apiRequest = (url, options = {}) => {
   if (sessionToken) headers.set('Authorization', `Bearer ${sessionToken}`);
   return fetch(url, { ...options, credentials: options.credentials || 'same-origin', headers });
 };
-const apiEventsUrl = () => {
-  const params = new URLSearchParams();
-  if (API_TOKEN) params.set('token', API_TOKEN);
-  const sessionToken = getSessionToken();
-  if (sessionToken) params.set('session', sessionToken);
-  return `/api/events?${params.toString()}`;
-};
 const apiUnavailableMessage = 'Không kết nối được máy chủ Fresh. Hãy chạy API bằng "npm run api" rồi tải lại trang.';
 const readApiJson = async (response) => {
   const text = await response.text();
