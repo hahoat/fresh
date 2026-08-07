@@ -15,23 +15,7 @@ const navItems = [
 
 const categories = ['Tất cả', 'Coffee', 'Trà Sữa', 'Trà Trái Cây', 'Đá Xay', 'Sữa Chua', 'Nước Ép', 'Soda', 'Đồ Ăn Nhanh', 'Mỳ Cay', 'Pizza', 'Gà Rán & Sốt', 'Cơm Gà', 'Sét Gà', 'Set Gà', 'Bánh Mỳ', 'Khác', 'Đồ uống', 'Ăn vặt', 'Combo'];
 
-const initialProducts = [
-  { id: 'peach-tea', name: 'Trà đào cam sả', category: 'Đồ uống', price: 35000, sold: 128, revenue: 2816000, accent: 'orange', icon: '🍊', stock: 42 },
-  { id: 'fries', name: 'Khoai tây lắc phô mai', category: 'Ăn vặt', price: 39000, sold: 96, revenue: 1728000, accent: 'green', icon: '🍟', stock: 24 },
-  { id: 'tokbokki', name: 'Tokbokki sốt cay', category: 'Ăn vặt', price: 45000, sold: 72, revenue: 1368000, accent: 'red', icon: '🍲', stock: 18 },
-  { id: 'matcha', name: 'Trà sữa matcha', category: 'Đồ uống', price: 39000, sold: 64, revenue: 1248000, accent: 'lime', icon: '🥤', stock: 31 },
-  { id: 'combo', name: 'Combo ăn vặt', category: 'Combo', price: 69000, sold: 51, revenue: 1098000, accent: 'yellow', icon: '🍿', stock: 12 },
-  { id: 'lemon-tea', name: 'Trà chanh', category: 'Đồ uống', price: 29000, sold: 44, revenue: 638000, accent: 'lemon', icon: '🍋', stock: 38 },
-  { id: 'black-coffee', name: 'Coffee Đen', category: 'Coffee', price: 25000, sold: 38, revenue: 950000, accent: 'purple', icon: '☕', stock: 44 },
-  { id: 'milk-tea', name: 'Trà Sữa Trân Châu Đường Đen', category: 'Trà Sữa', price: 30000, sold: 42, revenue: 1260000, accent: 'yellow', icon: '🧋', stock: 35 },
-  { id: 'peach-mango', name: 'Trà Đào Cam Sả', category: 'Trà Trái Cây', price: 30000, sold: 32, revenue: 960000, accent: 'orange', icon: '🍑', stock: 29 },
-  { id: 'matcha-ice', name: 'Đá Xay Matcha', category: 'Đá Xay', price: 30000, sold: 27, revenue: 810000, accent: 'lime', icon: '🍵', stock: 22 },
-  { id: 'fried-chicken', name: 'Đùi Gà Chiên', category: 'Gà Rán & Sốt', price: 32000, sold: 25, revenue: 800000, accent: 'yellow', icon: '🍗', stock: 20 },
-  { id: 'pizza', name: 'Pizza Hải Sản size S', category: 'Pizza', price: 50000, sold: 18, revenue: 900000, accent: 'red', icon: '🍕', stock: 15 },
-  { id: 'spicy-noodle', name: 'Mỳ Kim Chi Hải Sản', category: 'Mỳ Cay', price: 50000, sold: 20, revenue: 1000000, accent: 'red', icon: '🍜', stock: 17 },
-  { id: 'chicken-rice', name: 'Cơm Đùi Sốt Mắm', category: 'Cơm Gà', price: 50000, sold: 16, revenue: 800000, accent: 'orange', icon: '🍱', stock: 18 },
-  { id: 'banh-mi', name: 'Bánh Mỳ Ấp Chảo Truyền Thống', category: 'Bánh Mỳ', price: 40000, sold: 14, revenue: 560000, accent: 'yellow', icon: '🥖', stock: 12 },
-];
+const initialProducts = [];
 
 const userMenuCatalog = [
   [1,'Coffee Đen','Coffee',25000],[2,'Coffee Nâu','Coffee',25000],[3,'Coffee Kem Muối','Coffee',25000],[4,'Coffee Kem Trứng','Coffee',35000],[5,'Coffee Bạc Xỉu','Coffee',30000],[6,'Coffee Cốt Dừa','Coffee',36000],[7,'Phindi Hạnh Nhân','Coffee',30000],[8,'Phindi Caramel','Coffee',30000],
@@ -56,20 +40,14 @@ function mergeMenuProducts(savedProducts) {
   return saved.length ? [...saved, ...missing] : defaults;
 }
 
-const initialOrders = [
-  { id: '#F-1048', customer: 'Khách tại quầy', table: 'Bàn 03', items: '2x Trà đào cam sả, 1x Tokbokki sốt cay', total: 115000, status: 'Đang xử lý', kitchenStatus: 'Chờ chế biến', time: '09:24', tone: 'pending' },
-  { id: '#F-1047', customer: 'Nguyễn Minh', table: 'Bàn 05', items: '1x Khoai tây lắc phô mai, 2x Trà đào cam sả', total: 109000, status: 'Hoàn tất', kitchenStatus: 'Đã xong', time: '09:05', tone: 'success' },
-  { id: '#F-1046', customer: 'Trần Anh', table: 'Bàn 01', items: '1x Combo ăn vặt, 1x Trà đào cam sả', total: 104000, status: 'Hoàn tất', kitchenStatus: 'Đã xong', time: '08:42', tone: 'success' },
-  { id: '#F-1045', customer: 'Khách đặt online', table: 'Mang đi', items: '2x Trà sữa matcha', total: 78000, status: 'Hoàn tất', kitchenStatus: 'Đã xong', time: '08:27', tone: 'success' },
-  { id: '#F-1044', customer: 'Lê Hà', table: 'Bàn 02', items: '1x Tokbokki sốt cay, 1x Trà chanh', total: 74000, status: 'Đã hủy', kitchenStatus: 'Chờ chế biến', time: '08:04', tone: 'cancelled' },
-];
+const initialOrders = [];
 
 const initialTables = [
-  { id: 'T01', name: 'Bàn 01', seats: 2, zone: 'Trong nhà', status: 'Đang phục vụ', orderId: '#F-1046', total: 104000, since: '08:42' },
-  { id: 'T02', name: 'Bàn 02', seats: 4, zone: 'Trong nhà', status: 'Đặt trước', orderId: null, total: 0, since: '18:30' },
-  { id: 'T03', name: 'Bàn 03', seats: 4, zone: 'Trong nhà', status: 'Đang phục vụ', orderId: '#F-1048', total: 115000, since: '09:24' },
+  { id: 'T01', name: 'Bàn 01', seats: 2, zone: 'Trong nhà', status: 'Trống', orderId: null, total: 0, since: null },
+  { id: 'T02', name: 'Bàn 02', seats: 4, zone: 'Trong nhà', status: 'Trống', orderId: null, total: 0, since: null },
+  { id: 'T03', name: 'Bàn 03', seats: 4, zone: 'Trong nhà', status: 'Trống', orderId: null, total: 0, since: null },
   { id: 'T04', name: 'Bàn 04', seats: 6, zone: 'Trong nhà', status: 'Trống', orderId: null, total: 0, since: null },
-  { id: 'T05', name: 'Bàn 05', seats: 4, zone: 'Sân vườn', status: 'Chờ thanh toán', orderId: '#F-1047', total: 109000, since: '09:05' },
+  { id: 'T05', name: 'Bàn 05', seats: 4, zone: 'Sân vườn', status: 'Trống', orderId: null, total: 0, since: null },
   { id: 'T06', name: 'Bàn 06', seats: 2, zone: 'Sân vườn', status: 'Trống', orderId: null, total: 0, since: null },
   { id: 'T07', name: 'Bàn 07', seats: 4, zone: 'Sân vườn', status: 'Trống', orderId: null, total: 0, since: null },
   { id: 'T08', name: 'Bàn 08', seats: 6, zone: 'Sân vườn', status: 'Trống', orderId: null, total: 0, since: null },
@@ -99,20 +77,20 @@ const initialStaff = [
 ];
 
 const revenuePoints = [
-  { day: 'Sáu', date: '01/08', value: 3200000 },
-  { day: 'Bảy', date: '02/08', value: 5100000 },
-  { day: 'CN', date: '03/08', value: 3500000 },
-  { day: 'Hai', date: '04/08', value: 4100000 },
-  { day: 'Ba', date: '05/08', value: 6000000 },
-  { day: 'Tư', date: '06/08', value: 5500000 },
-  { day: 'Năm', date: '07/08', value: 8450000 },
+  { day: 'Sáu', date: '01/08', value: 0 },
+  { day: 'Bảy', date: '02/08', value: 0 },
+  { day: 'CN', date: '03/08', value: 0 },
+  { day: 'Hai', date: '04/08', value: 0 },
+  { day: 'Ba', date: '05/08', value: 0 },
+  { day: 'Tư', date: '06/08', value: 0 },
+  { day: 'Năm', date: '07/08', value: 0 },
 ];
 
 const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`;
 const compactMoney = (value) => `${new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value)} ₫`;
-const STORAGE_KEY = 'fresh-restaurant-manager:v1';
+const STORAGE_KEY = 'fresh-restaurant-manager:v2';
 const LEGACY_STORAGE_KEY = 'fresh-sales-manager:v1';
-const BASE_TODAY_STATS = { revenue: 8450000, orders: 86 };
+const BASE_TODAY_STATS = { revenue: 0, orders: 0 };
 const sharedStateKeys = ['products', 'orders', 'tables', 'inventory', 'staff'];
 const API_TOKEN_STORAGE_KEY = 'fresh-api-token:v1';
 const SESSION_STORAGE_KEY = 'fresh-session:v1';
@@ -174,9 +152,9 @@ const displayApiError = (error, fallback = 'Không thể hoàn tất thao tác.'
 function readStoredState() {
   if (typeof window === 'undefined') return {};
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem(LEGACY_STORAGE_KEY) || '{}';
+    const raw = window.localStorage.getItem(STORAGE_KEY) || '{}';
     const stored = JSON.parse(raw);
-    return stored?.version === 1 || stored?.version === 2 || stored?.version === 3 ? stored : {};
+    return stored?.version === 2 || stored?.version === 3 ? stored : {};
   } catch {
     return {};
   }
@@ -366,7 +344,7 @@ function QuickOrderPanel({ products, basket, onQuantityChange, onCheckout, full 
 }
 
 function BestSellers({ products, onNavigate }) {
-  const bestSellers = [...products].sort((first, second) => second.sold - first.sold).slice(0, 3);
+  const bestSellers = [...products].filter((product) => Number(product.sold) > 0).sort((first, second) => second.sold - first.sold).slice(0, 3);
   return <section className="best-sellers"><SectionHeading title="Món bán chạy" action="Xem tất cả" onAction={() => onNavigate('products')} /><div className="best-seller-list">
     {bestSellers.map((product, index) => <div className="best-seller" key={product.id}><div className={`rank rank-${index + 1}`}>{index + 1}</div><ProductArt product={product} small /><div className="best-seller-copy"><strong>{product.name}</strong><span>{product.sold} phần</span><small>Doanh thu {money(product.revenue)}</small></div></div>)}
   </div></section>;
@@ -432,10 +410,10 @@ function AccountsPanel({ accounts, onCreate }) {
   return <section className="management-panel accounts-panel"><div className="section-heading"><div><h2>Tài khoản đăng nhập</h2><p className="panel-subtitle">Phân quyền truy cập cho máy quản lý, máy gọi món và máy bếp.</p></div><button className="outline-button" onClick={onCreate}><Icon name="plus" size={16} /> Tạo tài khoản</button></div><div className="products-table-wrap"><table className="products-table accounts-table"><thead><tr><th>Tài khoản</th><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th></tr></thead><tbody>{accounts.map((account) => <tr key={account.id}><td><strong>{account.username}</strong></td><td>{account.name}</td><td><span className="role-badge">{roleLabels[account.role] || account.role}</span></td><td><StatusBadge tone={account.active ? 'success' : 'cancelled'}>{account.active ? 'Đang hoạt động' : 'Đã khóa'}</StatusBadge></td></tr>)}</tbody></table>{accounts.length === 0 && <div className="empty-state table-empty"><Icon name="users" size={22} /><p>Chưa tải được danh sách tài khoản</p></div>}</div></section>;
 }
 
-function StaffPage({ staff, accounts, searchValue, onSearch, onCreate, onCreateAccount, onEdit, onToggle, onDelete }) {
+function StaffPage({ staff, accounts, searchValue, onSearch, onCreate, onCreateAccount, onEdit, onToggle, onDelete, onResetData }) {
   const query = searchValue.trim().toLowerCase();
   const visible = staff.filter((person) => !query || `${person.name} ${person.role} ${person.phone}`.toLowerCase().includes(query));
-  return <div className="page-content"><div className="page-intro"><div><h2>Nhân viên</h2><p>Quản lý nhân sự, ca làm và tài khoản truy cập.</p></div><div className="toolbar-actions"><button className="outline-button" onClick={onCreateAccount}><Icon name="users" size={16} /> Tạo tài khoản</button><button className="primary-button" onClick={onCreate}><Icon name="plus" size={18} /> Thêm nhân viên</button></div></div><section className="management-panel"><div className="management-toolbar"><label className="local-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm tên, chức vụ, số điện thoại..." /></label><span className="inventory-note"><Icon name="users" size={15} /> {staff.filter((person) => person.active).length} nhân viên đang làm việc</span></div><div className="products-table-wrap"><table className="products-table staff-table"><thead><tr><th>Họ tên</th><th>Chức vụ</th><th>Ca làm</th><th>Số điện thoại</th><th>Trạng thái</th><th /></tr></thead><tbody>{visible.map((person) => <tr key={person.id}><td><strong>{person.name}</strong></td><td><span className="role-badge">{person.role}</span></td><td>{person.shift}</td><td>{person.phone}</td><td><StatusBadge tone={person.active ? 'success' : 'cancelled'}>{person.active ? 'Đang làm' : 'Nghỉ'}</StatusBadge></td><td><div className="row-actions"><button className="outline-button staff-action" onClick={() => onToggle(person)}>{person.active ? 'Cho nghỉ' : 'Kích hoạt'}</button><button className="icon-button small-icon" onClick={() => onEdit(person)} aria-label={`Sửa ${person.name}`}><Icon name="edit" size={16} /></button><button className="icon-button small-icon" onClick={() => onDelete(person)} aria-label={`Xóa ${person.name}`}><Icon name="trash" size={16} /></button></div></td></tr>)}</tbody></table>{visible.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy nhân viên</p></div>}</div></section><AccountsPanel accounts={accounts} onCreate={onCreateAccount} /></div>;
+  return <div className="page-content"><div className="page-intro"><div><h2>Nhân viên</h2><p>Quản lý nhân sự, ca làm và tài khoản truy cập.</p></div><div className="toolbar-actions"><button className="outline-button reset-data-button" onClick={onResetData}><Icon name="trash" size={16} /> Đặt lại dữ liệu</button><button className="outline-button" onClick={onCreateAccount}><Icon name="users" size={16} /> Tạo tài khoản</button><button className="primary-button" onClick={onCreate}><Icon name="plus" size={18} /> Thêm nhân viên</button></div></div><section className="management-panel"><div className="management-toolbar"><label className="local-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm tên, chức vụ, số điện thoại..." /></label><span className="inventory-note"><Icon name="users" size={15} /> {staff.filter((person) => person.active).length} nhân viên đang làm việc</span></div><div className="products-table-wrap"><table className="products-table staff-table"><thead><tr><th>Họ tên</th><th>Chức vụ</th><th>Ca làm</th><th>Số điện thoại</th><th>Trạng thái</th><th /></tr></thead><tbody>{visible.map((person) => <tr key={person.id}><td><strong>{person.name}</strong></td><td><span className="role-badge">{person.role}</span></td><td>{person.shift}</td><td>{person.phone}</td><td><StatusBadge tone={person.active ? 'success' : 'cancelled'}>{person.active ? 'Đang làm' : 'Nghỉ'}</StatusBadge></td><td><div className="row-actions"><button className="outline-button staff-action" onClick={() => onToggle(person)}>{person.active ? 'Cho nghỉ' : 'Kích hoạt'}</button><button className="icon-button small-icon" onClick={() => onEdit(person)} aria-label={`Sửa ${person.name}`}><Icon name="edit" size={16} /></button><button className="icon-button small-icon" onClick={() => onDelete(person)} aria-label={`Xóa ${person.name}`}><Icon name="trash" size={16} /></button></div></td></tr>)}</tbody></table>{visible.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy nhân viên</p></div>}</div></section><AccountsPanel accounts={accounts} onCreate={onCreateAccount} /></div>;
 }
 
 function StaffFormModal({ staff, onClose, onSave }) {
@@ -509,8 +487,11 @@ function MobileMenuSheet({ open, activeView, onNavigate, onClose, items = navIte
 
 function ReportsPage({ stats, products, orders }) {
   const completedOrders = orders.filter((order) => order.status === 'Hoàn tất').length;
-  const bestSeller = [...products].sort((first, second) => second.sold - first.sold)[0];
-  return <div className="page-content"><div className="page-intro"><div><h2>Báo cáo</h2><p>Nhìn nhanh hiệu quả kinh doanh của cửa hàng.</p></div><button className="outline-button"><Icon name="chart" size={17} /> Tuần này <Icon name="down" size={15} /></button></div><div className="report-grid"><section className="chart-panel report-chart"><SectionHeading title="Doanh thu 7 ngày" /><RevenueChart /></section><section className="report-summary"><SectionHeading title="Tóm tắt hôm nay" /><div className="report-metric"><span>Tổng doanh thu</span><strong>{money(stats.revenue)}</strong><small className="positive">+18,6% so với hôm qua</small></div><div className="report-metric"><span>Số đơn hoàn tất</span><strong>{completedOrders} / {stats.orders}</strong><small>{stats.orders ? `${((completedOrders / stats.orders) * 100).toFixed(1).replace('.', ',')}% tỷ lệ hoàn tất` : 'Chưa có đơn hàng'}</small></div><div className="report-metric"><span>Món bán chạy nhất</span><strong>{bestSeller?.name || 'Chưa có dữ liệu'}</strong><small>{bestSeller ? `${bestSeller.sold} phần trong tuần` : 'Thêm sản phẩm để xem báo cáo'}</small></div></section></div><section className="category-performance"><SectionHeading title="Doanh thu theo danh mục" /><div className="category-bars"><div><span>Đồ uống</span><strong>{money(4732000)}</strong><i><em style={{ width: '78%' }} /></i></div><div><span>Ăn vặt</span><strong>{money(3824000)}</strong><i><em style={{ width: '63%' }} /></i></div><div><span>Combo</span><strong>{money(1098000)}</strong><i><em style={{ width: '25%' }} /></i></div></div></section></div>;
+  const bestSeller = [...products].filter((product) => Number(product.sold) > 0).sort((first, second) => second.sold - first.sold)[0];
+  const categoryTotals = products.reduce((totals, product) => ({ ...totals, [product.category]: (totals[product.category] || 0) + Number(product.revenue || 0) }), {});
+  const categoryRows = Object.entries(categoryTotals).sort(([, first], [, second]) => second - first).slice(0, 3);
+  const categoryMax = Math.max(...categoryRows.map(([, total]) => total), 1);
+  return <div className="page-content"><div className="page-intro"><div><h2>Báo cáo</h2><p>Nhìn nhanh hiệu quả kinh doanh của cửa hàng.</p></div><button className="outline-button"><Icon name="chart" size={17} /> Tuần này <Icon name="down" size={15} /></button></div><div className="report-grid"><section className="chart-panel report-chart"><SectionHeading title="Doanh thu 7 ngày" /><RevenueChart /></section><section className="report-summary"><SectionHeading title="Tóm tắt hôm nay" /><div className="report-metric"><span>Tổng doanh thu</span><strong>{money(stats.revenue)}</strong><small className="positive">{stats.revenue ? '+18,6% so với hôm qua' : 'Chưa có doanh thu'}</small></div><div className="report-metric"><span>Số đơn hoàn tất</span><strong>{completedOrders} / {stats.orders}</strong><small>{stats.orders ? `${((completedOrders / stats.orders) * 100).toFixed(1).replace('.', ',')}% tỷ lệ hoàn tất` : 'Chưa có đơn hàng'}</small></div><div className="report-metric"><span>Món bán chạy nhất</span><strong>{bestSeller?.name || 'Chưa có dữ liệu'}</strong><small>{bestSeller ? `${bestSeller.sold} phần trong tuần` : 'Thêm sản phẩm để xem báo cáo'}</small></div></section></div><section className="category-performance"><SectionHeading title="Doanh thu theo danh mục" /><div className="category-bars">{categoryRows.length ? categoryRows.map(([category, total]) => <div key={category}><span>{category}</span><strong>{money(total)}</strong><i><em style={{ width: `${Math.round((total / categoryMax) * 100)}%` }} /></i></div>) : <p className="table-mini-empty">Chưa có dữ liệu doanh thu theo danh mục.</p>}</div></section></div>;
 }
 
 function OrderDetail({ order, onClose, onStatusChange, onPrint }) {
@@ -577,10 +558,7 @@ function App({ user, onLogout }) {
   const [tables, setTables] = useState(() => Array.isArray(persisted.tables) && persisted.tables.length >= 20 ? persisted.tables : initialTables20);
   const [inventory, setInventory] = useState(() => Array.isArray(persisted.inventory) && persisted.inventory.length ? persisted.inventory : initialInventory);
   const [staff, setStaff] = useState(() => Array.isArray(persisted.staff) && persisted.staff.length ? persisted.staff : initialStaff);
-  const [basket, setBasket] = useState(() => {
-    if (persisted.basket) return persisted.basket;
-    return deviceMode === 'manager' ? { 'peach-tea': 2, tokbokki: 1 } : {};
-  });
+  const [basket, setBasket] = useState(() => persisted.basket || {});
   const [activeTable, setActiveTable] = useState(null);
   const [globalSearch, setGlobalSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -608,7 +586,7 @@ function App({ user, onLogout }) {
   const applyRemoteState = (remoteState) => {
     if (!remoteState || typeof remoteState !== 'object') return;
     const nextProducts = mergeMenuProducts(remoteState.products);
-    const nextOrders = Array.isArray(remoteState.orders) && remoteState.orders.length ? remoteState.orders : initialOrders;
+    const nextOrders = Array.isArray(remoteState.orders) ? remoteState.orders : initialOrders;
     const nextTables = Array.isArray(remoteState.tables) && remoteState.tables.length >= 20 ? remoteState.tables : initialTables20;
     const nextInventory = Array.isArray(remoteState.inventory) && remoteState.inventory.length ? remoteState.inventory : initialInventory;
     const nextStaff = Array.isArray(remoteState.staff) && remoteState.staff.length ? remoteState.staff : initialStaff;
@@ -850,6 +828,19 @@ function App({ user, onLogout }) {
       notify(displayApiError(accountError, 'Không thể tạo tài khoản'));
     }
   };
+  const resetOperationalData = async () => {
+    if (!window.confirm('Đặt lại dữ liệu vận hành? Thao tác này sẽ xoá toàn bộ đơn hàng, trạng thái bàn, doanh thu và giỏ hàng; danh sách món và tài khoản vẫn được giữ lại.')) return;
+    try {
+      const response = await apiRequest('/api/admin/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'RESET_FRESH' }) });
+      const payload = await readApiJson(response);
+      if (!response.ok) throw new Error(payload.error || 'Không thể đặt lại dữ liệu.');
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      window.location.reload();
+    } catch (resetError) {
+      notify(displayApiError(resetError, 'Không thể đặt lại dữ liệu.'));
+    }
+  };
   const toggleStaff = (person) => {
     setStaff((current) => current.map((item) => item.id === person.id ? { ...item, active: !item.active } : item));
     notify(person.active ? `Đã chuyển ${person.name} sang trạng thái nghỉ` : `Đã kích hoạt ${person.name}`);
@@ -882,7 +873,7 @@ function App({ user, onLogout }) {
   if (activeView === 'sales') content = <SalesPage products={products} basket={basket} activeTable={activeTable} onQuantityChange={changeQuantity} onCheckout={openCheckout} onNavigate={navigate} />;
   if (activeView === 'kitchen') content = <KitchenPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onStageChange={updateKitchenStage} onSelectOrder={setSelectedOrder} />;
   if (activeView === 'products') content = <ProductsPage products={products} searchValue={globalSearch} onSearch={setGlobalSearch} onCreateProduct={() => setProductModal({ open: true, product: null })} onEditProduct={(product) => setProductModal({ open: true, product })} onDeleteProduct={deleteProduct} />;
-  if (activeView === 'staff') content = <StaffPage staff={staff} accounts={accounts} searchValue={globalSearch} onSearch={setGlobalSearch} onCreate={() => setStaffModal({ open: true, staff: null })} onCreateAccount={() => setAccountModalOpen(true)} onEdit={(person) => setStaffModal({ open: true, staff: person })} onToggle={toggleStaff} onDelete={deleteStaff} />;
+  if (activeView === 'staff') content = <StaffPage staff={staff} accounts={accounts} searchValue={globalSearch} onSearch={setGlobalSearch} onCreate={() => setStaffModal({ open: true, staff: null })} onCreateAccount={() => setAccountModalOpen(true)} onEdit={(person) => setStaffModal({ open: true, staff: person })} onToggle={toggleStaff} onDelete={deleteStaff} onResetData={resetOperationalData} />;
   if (activeView === 'inventory') content = <InventoryPage inventory={inventory} searchValue={globalSearch} onSearch={setGlobalSearch} onRestock={restockInventory} />;
   if (activeView === 'orders') content = <OrdersPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectOrder={setSelectedOrder} onExport={exportOrders} />;
   if (activeView === 'reports') content = <ReportsPage stats={stats} products={products} orders={orders} />;
