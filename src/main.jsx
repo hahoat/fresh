@@ -163,6 +163,20 @@ const apiEventsUrl = () => {
   if (sessionToken) params.set('session', sessionToken);
   return `/api/events?${params.toString()}`;
 };
+const apiUnavailableMessage = 'Không kết nối được máy chủ Fresh. Hãy chạy API bằng "npm run api" rồi tải lại trang.';
+const readApiJson = async (response) => {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(response.status >= 500 || response.status === 404 ? apiUnavailableMessage : 'Máy chủ trả về dữ liệu không hợp lệ.');
+  }
+};
+const displayApiError = (error, fallback = 'Không thể hoàn tất thao tác.') => {
+  const message = String(error?.message || error || '');
+  return /fetch failed|failed to fetch|networkerror|unexpected token|not valid json/i.test(message) ? apiUnavailableMessage : message || fallback;
+};
 
 function readStoredState() {
   if (typeof window === 'undefined') return {};
@@ -529,7 +543,7 @@ function AuthGate() {
     if (!getSessionToken()) { setLoading(false); return; }
     apiRequest('/api/auth/me').then(async (response) => {
       if (!response.ok) throw new Error('Phiên đăng nhập đã hết hạn.');
-      const payload = await response.json();
+      const payload = await readApiJson(response);
       setUser(payload.user);
     }).catch(() => {
       window.localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -541,12 +555,12 @@ function AuthGate() {
     setError('');
     try {
       const response = await apiRequest('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
-      const payload = await response.json();
+      const payload = await readApiJson(response);
       if (!response.ok) throw new Error(payload.error || 'Không thể đăng nhập.');
       window.localStorage.setItem(SESSION_STORAGE_KEY, payload.sessionToken);
       setUser(payload.user);
     } catch (loginError) {
-      setError(loginError.message || 'Không thể đăng nhập.');
+      setError(displayApiError(loginError, 'Không thể đăng nhập.'));
     } finally {
       setLoginLoading(false);
     }
@@ -634,7 +648,7 @@ function App({ user, onLogout }) {
         body: JSON.stringify(replace ? { state: current, deviceMode } : { changes, deviceMode }),
       });
       if (!response.ok) throw new Error('Máy chủ không nhận dữ liệu');
-      const payload = await response.json();
+      const payload = await readApiJson(response);
       remoteRevisionRef.current = payload.revision || remoteRevisionRef.current;
       if (payload.state) applyRemoteState(payload.state);
       setServerAvailable(true);
@@ -653,7 +667,7 @@ function App({ user, onLogout }) {
       try {
         const response = await apiRequest('/api/state', { headers: { Accept: 'application/json' } });
         if (!response.ok) throw new Error('Máy chủ không phản hồi');
-        const payload = await response.json();
+        const payload = await readApiJson(response);
         if (cancelled) return;
         remoteRevisionRef.current = payload.revision || 0;
         if (payload.state) {
@@ -719,7 +733,7 @@ function App({ user, onLogout }) {
     if (user.role !== 'manager') return;
     apiRequest('/api/auth/users').then(async (response) => {
       if (!response.ok) return;
-      const payload = await response.json();
+      const payload = await readApiJson(response);
       setAccounts(Array.isArray(payload.users) ? payload.users : []);
     }).catch(() => setAccounts([]));
   }, [user.role]);
@@ -825,13 +839,13 @@ function App({ user, onLogout }) {
   const saveAccount = async (draft) => {
     try {
       const response = await apiRequest('/api/auth/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) });
-      const payload = await response.json();
+      const payload = await readApiJson(response);
       if (!response.ok) throw new Error(payload.error || 'Không thể tạo tài khoản.');
       setAccounts((current) => [...current, payload.user]);
       setAccountModalOpen(false);
       notify(`Đã tạo tài khoản ${payload.user.username}`);
     } catch (accountError) {
-      notify(accountError.message || 'Không thể tạo tài khoản');
+      notify(displayApiError(accountError, 'Không thể tạo tài khoản'));
     }
   };
   const toggleStaff = (person) => {
