@@ -280,7 +280,7 @@ function RevenueChart({ compact = false }) {
       <polygon points={area} fill={`url(#chart-fill-${compact ? 'small' : 'large'})`} />
       <polyline points={line} className="chart-line" />
       {coordinates.map((point, index) => <circle key={point.date} cx={point.x} cy={point.y} r={index === coordinates.length - 1 ? 4.5 : 3.5} className={index === coordinates.length - 1 ? 'chart-point selected' : 'chart-point'} />)}
-      {!compact && <g className="chart-tooltip"><rect x={coordinates[6].x - 52} y={coordinates[6].y - 53} width="86" height="42" rx="8" /><text x={coordinates[6].x - 40} y={coordinates[6].y - 36}>07/08</text><text x={coordinates[6].x - 40} y={coordinates[6].y - 19}>{money(8450000)}</text></g>}
+      {!compact && <g className="chart-tooltip"><rect x={coordinates[6].x - 52} y={coordinates[6].y - 53} width="86" height="42" rx="8" /><text x={coordinates[6].x - 40} y={coordinates[6].y - 36}>{revenuePoints[6].date}</text><text x={coordinates[6].x - 40} y={coordinates[6].y - 19}>{money(revenuePoints[6].value)}</text></g>}
       {labels.map((point) => <g key={point.date}><text x={point.x} y={height - 17} className="chart-day" textAnchor="middle">{point.day}</text><text x={point.x} y={height - 3} className="chart-date" textAnchor="middle">{point.date}</text></g>)}
     </svg>
   </div>;
@@ -347,6 +347,7 @@ function BestSellers({ products, onNavigate }) {
   const bestSellers = [...products].filter((product) => Number(product.sold) > 0).sort((first, second) => second.sold - first.sold).slice(0, 3);
   return <section className="best-sellers"><SectionHeading title="Món bán chạy" action="Xem tất cả" onAction={() => onNavigate('products')} /><div className="best-seller-list">
     {bestSellers.map((product, index) => <div className="best-seller" key={product.id}><div className={`rank rank-${index + 1}`}>{index + 1}</div><ProductArt product={product} small /><div className="best-seller-copy"><strong>{product.name}</strong><span>{product.sold} phần</span><small>Doanh thu {money(product.revenue)}</small></div></div>)}
+    {bestSellers.length === 0 && <p className="table-mini-empty">Chưa có món nào được bán.</p>}
   </div></section>;
 }
 
@@ -363,7 +364,7 @@ function TableSnapshot({ tables, onNavigate }) {
 function Overview({ products, orders, tables, basket, stats, onQuantityChange, onCheckout, onNavigate, onSelectOrder }) {
   return <div className="page-content overview-page">
     <div className="welcome-row"><div><h2>Chào buổi sáng, Fresh</h2><p>Thứ Năm, 07 tháng 08, 2026</p></div><button className="primary-button" onClick={() => onNavigate('sales')}><Icon name="plus" size={18} /> Tạo đơn mới</button></div>
-    <div className="stats-grid"><StatCard label="Doanh thu hôm nay" value={money(stats.revenue)} change="18,6%" icon="dollar" /><StatCard label="Đơn hàng hôm nay" value={stats.orders} change="12,5%" icon="cart" /><StatCard label="Giá trị trung bình" value={money(stats.average)} change="4,3%" trend="down" icon="trendUp" /></div>
+    <div className="stats-grid"><StatCard label="Doanh thu hôm nay" value={money(stats.revenue)} change={stats.revenue ? '18,6%' : 'Chưa có dữ liệu'} icon="dollar" /><StatCard label="Đơn hàng hôm nay" value={stats.orders} change={stats.orders ? '12,5%' : 'Chưa có dữ liệu'} icon="cart" /><StatCard label="Giá trị trung bình" value={money(stats.average)} change={stats.average ? '4,3%' : 'Chưa có dữ liệu'} trend="down" icon="trendUp" /></div>
     <div className="dashboard-grid"><div className="main-column"><TableSnapshot tables={tables} onNavigate={onNavigate} /><section className="chart-panel"><SectionHeading title="Doanh thu 7 ngày" /><RevenueChart /></section><section className="orders-panel"><SectionHeading title="Đơn hàng gần đây" action="Xem tất cả" onAction={() => onNavigate('orders')} /><OrderList orders={orders} onSelect={onSelectOrder} /></section><BestSellers products={products} onNavigate={onNavigate} /></div><div className="order-rail"><QuickOrderPanel products={products} basket={basket} onQuantityChange={onQuantityChange} onCheckout={onCheckout} /></div></div>
   </div>;
 }
