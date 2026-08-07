@@ -112,23 +112,16 @@ const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`;
 const compactMoney = (value) => `${new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value)} ₫`;
 const STORAGE_KEY = 'fresh-restaurant-manager:v1';
 const LEGACY_STORAGE_KEY = 'fresh-sales-manager:v1';
-const DEVICE_MODE_STORAGE_KEY = 'fresh-device-mode:v1';
 const BASE_TODAY_STATS = { revenue: 8450000, orders: 86 };
 const sharedStateKeys = ['products', 'orders', 'tables', 'inventory', 'staff'];
 const API_TOKEN_STORAGE_KEY = 'fresh-api-token:v1';
+const SESSION_STORAGE_KEY = 'fresh-session:v1';
+const roleLabels = { manager: 'Quản lý', staff: 'Nhân viên gọi món', kitchen: 'Bếp' };
 const deviceModes = {
   manager: { label: 'Máy quản lý', initialView: 'overview' },
   staff: { label: 'Máy gọi món', initialView: 'tables' },
   kitchen: { label: 'Máy bếp', initialView: 'kitchen' },
 };
-
-function readDeviceMode() {
-  if (typeof window === 'undefined') return 'manager';
-  const queryMode = new URLSearchParams(window.location.search).get('mode');
-  if (queryMode && deviceModes[queryMode]) return queryMode;
-  const storedMode = window.localStorage.getItem(DEVICE_MODE_STORAGE_KEY);
-  return deviceModes[storedMode] ? storedMode : 'manager';
-}
 
 function stableJson(value) {
   return JSON.stringify(value);
@@ -136,6 +129,10 @@ function stableJson(value) {
 
 function sharedStateFrom(products, orders, tables, inventory, staff) {
   return { products, orders, tables, inventory, staff };
+}
+
+function deviceModeForRole(role) {
+  return role === 'manager' ? 'manager' : role === 'kitchen' ? 'kitchen' : 'staff';
 }
 
 function readApiToken() {
@@ -149,12 +146,23 @@ function readApiToken() {
 }
 
 const API_TOKEN = readApiToken();
+const getSessionToken = () => {
+  try { return window.localStorage.getItem(SESSION_STORAGE_KEY) || ''; } catch { return ''; }
+};
 const apiRequest = (url, options = {}) => {
   const headers = new Headers(options.headers || {});
   if (API_TOKEN) headers.set('X-Fresh-Token', API_TOKEN);
+  const sessionToken = getSessionToken();
+  if (sessionToken) headers.set('Authorization', `Bearer ${sessionToken}`);
   return fetch(url, { ...options, headers });
 };
-const apiEventsUrl = () => API_TOKEN ? `/api/events?token=${encodeURIComponent(API_TOKEN)}` : '/api/events';
+const apiEventsUrl = () => {
+  const params = new URLSearchParams();
+  if (API_TOKEN) params.set('token', API_TOKEN);
+  const sessionToken = getSessionToken();
+  if (sessionToken) params.set('session', sessionToken);
+  return `/api/events?${params.toString()}`;
+};
 
 function readStoredState() {
   if (typeof window === 'undefined') return {};
@@ -210,7 +218,7 @@ function FreshMark({ compact = false }) {
   return <div className={`fresh-mark ${compact ? 'is-compact' : ''}`}><span className="fresh-leaf">⌁</span><span>fresh</span></div>;
 }
 
-function Sidebar({ activeView, onNavigate, items = navItems, deviceMode }) {
+function Sidebar({ activeView, onNavigate, items = navItems, user }) {
   return <aside className="sidebar">
     <div className="sidebar-brand"><FreshMark /></div>
     <nav className="side-nav" aria-label="Điều hướng chính">
@@ -221,7 +229,7 @@ function Sidebar({ activeView, onNavigate, items = navItems, deviceMode }) {
     </nav>
     <div className="sidebar-profile">
       <div className="store-avatar"><Icon name="store" size={18} /></div>
-      <div><strong>fresh</strong><span>{deviceModes[deviceMode]?.label || 'Chủ cửa hàng'}</span></div>
+      <div><strong>{user?.name || 'fresh'}</strong><span>{roleLabels[user?.role] || 'Chủ cửa hàng'}</span></div>
       <Icon name="down" size={16} />
     </div>
   </aside>;
@@ -236,19 +244,18 @@ function MobileNav({ activeView, onNavigate, items = navItems }) {
   </nav>;
 }
 
-function Topbar({ title, globalSearch, onSearch, onMenu, onNotification, deviceMode, syncStatus, onDeviceModeChange, onReconnect }) {
+function Topbar({ title, globalSearch, onSearch, onMenu, onNotification, deviceMode, syncStatus, onReconnect, user, onLogout }) {
   const syncLabels = { connecting: 'Đang kết nối', syncing: 'Đang đồng bộ', online: 'Máy chủ live', offline: 'Chỉ máy này' };
+  const initials = (user?.name || 'Fresh').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   return <header className="topbar">
     <button className="mobile-menu" onClick={onMenu} aria-label="Mở menu"><Icon name="menu" size={22} /></button>
     <h1>{title}</h1>
     <div className="topbar-tools">
       <label className="global-search"><Icon name="search" size={18} /><input value={globalSearch} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm đơn, món, bàn..." /></label>
-      <select className="device-mode-select" value={deviceMode} onChange={(event) => onDeviceModeChange(event.target.value)} aria-label="Chế độ thiết bị">
-        {Object.entries(deviceModes).map(([value, mode]) => <option key={value} value={value}>{mode.label}</option>)}
-      </select>
+      <div className="account-chip"><div className="user-avatar">{initials}</div><span><strong>{user?.name || 'Fresh'}</strong><small>{roleLabels[user?.role] || deviceModes[deviceMode]?.label}</small></span></div>
       <button className={`sync-pill ${syncStatus}`} onClick={onReconnect} title="Bấm để kết nối lại máy chủ"><span /> {syncLabels[syncStatus] || syncLabels.offline}</button>
       <button className="icon-button notification" onClick={onNotification} aria-label="Thông báo"><Icon name="bell" size={21} /><span>3</span></button>
-      <div className="user-menu"><div className="user-avatar">NH</div><Icon name="down" size={16} /></div>
+      <button className="logout-button" onClick={onLogout}>Đăng xuất</button>
     </div>
   </header>;
 }
@@ -414,10 +421,14 @@ function InventoryPage({ inventory, searchValue, onSearch, onRestock }) {
   return <div className="page-content"><div className="page-intro"><div><h2>Kho nguyên liệu</h2><p>Theo dõi tồn kho nguyên liệu, bao bì và mức cần nhập.</p></div><button className="outline-button" onClick={() => window.print()}><Icon name="clipboard" size={17} /> In danh sách kho</button></div><div className="inventory-summary"><div><span>Tổng mặt hàng</span><strong>{inventory.length}</strong></div><div className={lowStockCount ? 'is-warning' : ''}><span>Sắp hết hàng</span><strong>{lowStockCount}</strong></div><div><span>Nhà cung cấp</span><strong>{new Set(inventory.map((item) => item.supplier)).size}</strong></div></div><section className="management-panel"><div className="management-toolbar"><label className="local-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm nguyên liệu..." /></label><span className="inventory-note"><Icon name="spark" size={15} /> Cập nhật theo ca</span></div><div className="products-table-wrap"><table className="products-table inventory-table"><thead><tr><th>Nguyên liệu</th><th>Nhóm</th><th>Tồn hiện tại</th><th>Mức tối thiểu</th><th>Trạng thái</th><th /></tr></thead><tbody>{filteredInventory.map((item) => { const isLow = item.stock <= item.minStock; return <tr key={item.id}><td><div className="inventory-name"><span className={`inventory-dot ${isLow ? 'low' : ''}`} /><div><strong>{item.name}</strong><small>{item.supplier}</small></div></div></td><td>{item.group}</td><td><strong className={isLow ? 'stock low' : 'stock'}>{quantity(item.stock)} {item.unit}</strong></td><td>{quantity(item.minStock)} {item.unit}</td><td><StatusBadge tone={isLow ? 'warning' : 'success'}>{isLow ? 'Cần nhập' : 'Đủ dùng'}</StatusBadge></td><td><button className="outline-button restock-button" onClick={() => onRestock(item)}><Icon name="plus" size={14} /> Nhập thêm</button></td></tr>; })}</tbody></table>{filteredInventory.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy nguyên liệu</p></div>}</div></section></div>;
 }
 
-function StaffPage({ staff, searchValue, onSearch, onCreate, onEdit, onToggle, onDelete }) {
+function AccountsPanel({ accounts, onCreate }) {
+  return <section className="management-panel accounts-panel"><div className="section-heading"><div><h2>Tài khoản đăng nhập</h2><p className="panel-subtitle">Phân quyền truy cập cho máy quản lý, máy gọi món và máy bếp.</p></div><button className="outline-button" onClick={onCreate}><Icon name="plus" size={16} /> Tạo tài khoản</button></div><div className="products-table-wrap"><table className="products-table accounts-table"><thead><tr><th>Tài khoản</th><th>Người dùng</th><th>Vai trò</th><th>Trạng thái</th></tr></thead><tbody>{accounts.map((account) => <tr key={account.id}><td><strong>{account.username}</strong></td><td>{account.name}</td><td><span className="role-badge">{roleLabels[account.role] || account.role}</span></td><td><StatusBadge tone={account.active ? 'success' : 'cancelled'}>{account.active ? 'Đang hoạt động' : 'Đã khóa'}</StatusBadge></td></tr>)}</tbody></table>{accounts.length === 0 && <div className="empty-state table-empty"><Icon name="users" size={22} /><p>Chưa tải được danh sách tài khoản</p></div>}</div></section>;
+}
+
+function StaffPage({ staff, accounts, searchValue, onSearch, onCreate, onCreateAccount, onEdit, onToggle, onDelete }) {
   const query = searchValue.trim().toLowerCase();
   const visible = staff.filter((person) => !query || `${person.name} ${person.role} ${person.phone}`.toLowerCase().includes(query));
-  return <div className="page-content"><div className="page-intro"><div><h2>Nhân viên</h2><p>Quản lý nhân sự, ca làm và trạng thái làm việc.</p></div><button className="primary-button" onClick={onCreate}><Icon name="plus" size={18} /> Thêm nhân viên</button></div><section className="management-panel"><div className="management-toolbar"><label className="local-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm tên, chức vụ, số điện thoại..." /></label><span className="inventory-note"><Icon name="users" size={15} /> {staff.filter((person) => person.active).length} nhân viên đang làm việc</span></div><div className="products-table-wrap"><table className="products-table staff-table"><thead><tr><th>Họ tên</th><th>Chức vụ</th><th>Ca làm</th><th>Số điện thoại</th><th>Trạng thái</th><th /></tr></thead><tbody>{visible.map((person) => <tr key={person.id}><td><strong>{person.name}</strong></td><td><span className="role-badge">{person.role}</span></td><td>{person.shift}</td><td>{person.phone}</td><td><StatusBadge tone={person.active ? 'success' : 'cancelled'}>{person.active ? 'Đang làm' : 'Nghỉ'}</StatusBadge></td><td><div className="row-actions"><button className="outline-button staff-action" onClick={() => onToggle(person)}>{person.active ? 'Cho nghỉ' : 'Kích hoạt'}</button><button className="icon-button small-icon" onClick={() => onEdit(person)} aria-label={`Sửa ${person.name}`}><Icon name="edit" size={16} /></button><button className="icon-button small-icon" onClick={() => onDelete(person)} aria-label={`Xóa ${person.name}`}><Icon name="trash" size={16} /></button></div></td></tr>)}</tbody></table>{visible.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy nhân viên</p></div>}</div></section></div>;
+  return <div className="page-content"><div className="page-intro"><div><h2>Nhân viên</h2><p>Quản lý nhân sự, ca làm và tài khoản truy cập.</p></div><div className="toolbar-actions"><button className="outline-button" onClick={onCreateAccount}><Icon name="users" size={16} /> Tạo tài khoản</button><button className="primary-button" onClick={onCreate}><Icon name="plus" size={18} /> Thêm nhân viên</button></div></div><section className="management-panel"><div className="management-toolbar"><label className="local-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm tên, chức vụ, số điện thoại..." /></label><span className="inventory-note"><Icon name="users" size={15} /> {staff.filter((person) => person.active).length} nhân viên đang làm việc</span></div><div className="products-table-wrap"><table className="products-table staff-table"><thead><tr><th>Họ tên</th><th>Chức vụ</th><th>Ca làm</th><th>Số điện thoại</th><th>Trạng thái</th><th /></tr></thead><tbody>{visible.map((person) => <tr key={person.id}><td><strong>{person.name}</strong></td><td><span className="role-badge">{person.role}</span></td><td>{person.shift}</td><td>{person.phone}</td><td><StatusBadge tone={person.active ? 'success' : 'cancelled'}>{person.active ? 'Đang làm' : 'Nghỉ'}</StatusBadge></td><td><div className="row-actions"><button className="outline-button staff-action" onClick={() => onToggle(person)}>{person.active ? 'Cho nghỉ' : 'Kích hoạt'}</button><button className="icon-button small-icon" onClick={() => onEdit(person)} aria-label={`Sửa ${person.name}`}><Icon name="edit" size={16} /></button><button className="icon-button small-icon" onClick={() => onDelete(person)} aria-label={`Xóa ${person.name}`}><Icon name="trash" size={16} /></button></div></td></tr>)}</tbody></table>{visible.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy nhân viên</p></div>}</div></section><AccountsPanel accounts={accounts} onCreate={onCreateAccount} /></div>;
 }
 
 function StaffFormModal({ staff, onClose, onSave }) {
@@ -426,6 +437,14 @@ function StaffFormModal({ staff, onClose, onSave }) {
   const canSave = draft.name.trim() && draft.phone.trim();
   const submit = (event) => { event.preventDefault(); if (canSave) onSave({ ...draft, name: draft.name.trim(), phone: draft.phone.trim() }); };
   return <div className="modal-backdrop" onClick={onClose}><form className="form-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>{staff ? 'Chỉnh sửa thông tin' : 'Thêm nhân viên mới'}</span><h2>{staff ? staff.name : 'Nhân viên mới'}</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div><div className="form-grid"><label><span>Họ và tên</span><input value={draft.name} onChange={(event) => update('name', event.target.value)} autoFocus /></label><label><span>Chức vụ</span><select value={draft.role} onChange={(event) => update('role', event.target.value)}><option>Quản lý</option><option>Phục vụ</option><option>Bếp trưởng</option><option>Thu ngân</option><option>Part-time</option></select></label><label><span>Ca làm</span><select value={draft.shift} onChange={(event) => update('shift', event.target.value)}><option>Sáng (6h–14h)</option><option>Chiều (14h–22h)</option><option>Tối (18h–23h)</option><option>Cả ngày</option></select></label><label><span>Số điện thoại</span><input value={draft.phone} onChange={(event) => update('phone', event.target.value)} /></label></div><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Hủy</button><button type="submit" className="primary-button" disabled={!canSave}>{staff ? 'Lưu thay đổi' : 'Thêm nhân viên'}</button></div></form></div>;
+}
+
+function AccountFormModal({ onClose, onSave }) {
+  const [draft, setDraft] = useState({ username: '', name: '', role: 'staff', password: '' });
+  const update = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
+  const canSave = /^[a-z0-9._-]{3,30}$/.test(draft.username.trim().toLowerCase()) && draft.name.trim() && draft.password.length >= 6;
+  const submit = (event) => { event.preventDefault(); if (canSave) onSave({ ...draft, username: draft.username.trim().toLowerCase(), name: draft.name.trim() }); };
+  return <div className="modal-backdrop" onClick={onClose}><form className="form-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>Tài khoản đăng nhập</span><h2>Tạo tài khoản mới</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div><div className="form-grid"><label><span>Tên đăng nhập</span><input value={draft.username} onChange={(event) => update('username', event.target.value)} placeholder="phucvu02" autoFocus /></label><label><span>Tên hiển thị</span><input value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="Nhân viên mới" /></label><label><span>Vai trò</span><select value={draft.role} onChange={(event) => update('role', event.target.value)}><option value="staff">Nhân viên gọi món</option><option value="kitchen">Bếp</option><option value="manager">Quản lý</option></select></label><label><span>Mật khẩu</span><input type="password" value={draft.password} onChange={(event) => update('password', event.target.value)} placeholder="Tối thiểu 6 ký tự" /></label></div><p className="form-hint">Mật khẩu được mã hóa trên máy chủ, không lưu dạng văn bản.</p><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Hủy</button><button type="submit" className="primary-button" disabled={!canSave}>Tạo tài khoản</button></div></form></div>;
 }
 
 function SalesPage({ products, basket, activeTable, onQuantityChange, onCheckout, onNavigate }) {
@@ -493,9 +512,59 @@ function OrderDetail({ order, onClose, onStatusChange, onPrint }) {
   return <div className="modal-backdrop" onClick={onClose}><aside className="order-detail" onClick={(event) => event.stopPropagation()}><div className="detail-header"><div><span>Chi tiết đơn hàng</span><h2>{order.id}</h2></div><button className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div><div className="detail-status"><StatusBadge tone={order.tone}>{order.status}</StatusBadge><span>{order.time} · {order.customer}{order.table ? ` · ${order.table}` : ''}</span></div><div className="detail-items"><h3>Món đã gọi</h3><div className="detail-item"><div><strong>{order.items.split(',')[0]}</strong><span>{order.payment || 'Tiền mặt'} · {order.customer}</span></div><strong>{money(order.total)}</strong></div>{order.items.split(',').slice(1).map((item) => <div className="detail-item detail-item-secondary" key={item}><span>{item.trim()}</span></div>)}</div><div className="detail-total"><span>Tổng thanh toán</span><strong>{money(order.total)}</strong></div><div className="detail-actions">{nextStatus && <button className="primary-button" onClick={() => onStatusChange(order.id, nextStatus)}><Icon name="check" size={17} /> {nextStatus === 'Hoàn tất' ? 'Đánh dấu hoàn tất' : 'Mở lại đơn'}</button>}<button className="outline-button" onClick={onPrint}><Icon name="clipboard" size={17} /> In hóa đơn</button><button className="outline-button full-button" onClick={onClose}>Đóng chi tiết</button></div></aside></div>;
 }
 
-function App() {
-  const [deviceMode, setDeviceMode] = useState(readDeviceMode);
-  const [activeView, setActiveView] = useState(() => deviceModes[readDeviceMode()]?.initialView || 'overview');
+function LoginPage({ onLogin, error, loading }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const submit = (event) => { event.preventDefault(); onLogin({ username, password }); };
+  return <main className="auth-page"><section className="auth-card"><FreshMark /><div className="auth-heading"><span>Hệ thống quản lý nhà hàng</span><h1>Đăng nhập Fresh</h1><p>Đăng nhập theo vị trí làm việc để mở đúng màn hình.</p></div><form className="auth-form" onSubmit={submit}><label><span>Tên đăng nhập</span><input value={username} onChange={(event) => setUsername(event.target.value)} autoFocus placeholder="Nhập tên đăng nhập" /></label><label><span>Mật khẩu</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Nhập mật khẩu" /></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button full-button" type="submit" disabled={loading || !username.trim() || !password}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</button></form><div className="default-accounts"><strong>Tài khoản mặc định</strong><span><b>admin</b> / admin123 · Quản lý</span><span><b>phucvu</b> / phucvu123 · Gọi món</span><span><b>bep</b> / bep12345 · Bếp</span></div></section></main>;
+}
+
+function AuthGate() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!getSessionToken()) { setLoading(false); return; }
+    apiRequest('/api/auth/me').then(async (response) => {
+      if (!response.ok) throw new Error('Phiên đăng nhập đã hết hạn.');
+      const payload = await response.json();
+      setUser(payload.user);
+    }).catch(() => {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const login = async ({ username, password }) => {
+    setLoginLoading(true);
+    setError('');
+    try {
+      const response = await apiRequest('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Không thể đăng nhập.');
+      window.localStorage.setItem(SESSION_STORAGE_KEY, payload.sessionToken);
+      setUser(payload.user);
+    } catch (loginError) {
+      setError(loginError.message || 'Không thể đăng nhập.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try { await apiRequest('/api/auth/logout', { method: 'POST' }); } catch { /* phiên có thể đã hết hạn */ }
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    setUser(null);
+  };
+
+  if (loading) return <main className="auth-page"><div className="auth-loading"><FreshMark /><span>Đang kiểm tra phiên đăng nhập...</span></div></main>;
+  return user ? <App user={user} onLogout={logout} /> : <LoginPage onLogin={login} error={error} loading={loginLoading} />;
+}
+
+function App({ user, onLogout }) {
+  const deviceMode = deviceModeForRole(user.role);
+  const [activeView, setActiveView] = useState(() => deviceModes[deviceMode]?.initialView || 'overview');
   const [persisted] = useState(readStoredState);
   const [products, setProducts] = useState(() => mergeMenuProducts(persisted.products));
   const [orders, setOrders] = useState(() => Array.isArray(persisted.orders) && persisted.orders.length ? persisted.orders : initialOrders);
@@ -504,7 +573,7 @@ function App() {
   const [staff, setStaff] = useState(() => Array.isArray(persisted.staff) && persisted.staff.length ? persisted.staff : initialStaff);
   const [basket, setBasket] = useState(() => {
     if (persisted.basket) return persisted.basket;
-    return readDeviceMode() === 'manager' ? { 'peach-tea': 2, tokbokki: 1 } : {};
+    return deviceMode === 'manager' ? { 'peach-tea': 2, tokbokki: 1 } : {};
   });
   const [activeTable, setActiveTable] = useState(null);
   const [globalSearch, setGlobalSearch] = useState('');
@@ -514,6 +583,8 @@ function App() {
   const [staffModal, setStaffModal] = useState({ open: false, staff: null });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState('connecting');
   const [remoteReady, setRemoteReady] = useState(false);
   const [serverAvailable, setServerAvailable] = useState(false);
@@ -644,6 +715,15 @@ function App() {
     return () => window.clearTimeout(syncTimerRef.current);
   }, [products, orders, tables, inventory, staff, basket, remoteReady]);
 
+  useEffect(() => {
+    if (user.role !== 'manager') return;
+    apiRequest('/api/auth/users').then(async (response) => {
+      if (!response.ok) return;
+      const payload = await response.json();
+      setAccounts(Array.isArray(payload.users) ? payload.users : []);
+    }).catch(() => setAccounts([]));
+  }, [user.role]);
+
   const pageTitles = { overview: 'Tổng quan', tables: 'Bàn ăn', sales: 'Bán hàng', kitchen: 'Màn hình bếp', products: 'Thực đơn', staff: 'Nhân viên', inventory: 'Kho nguyên liệu', orders: 'Đơn hàng', reports: 'Báo cáo' };
   const visibleNavItems = useMemo(() => {
     if (deviceMode === 'manager') return navItems;
@@ -654,20 +734,6 @@ function App() {
     if (!isInternalOrderView && !visibleNavItems.some((item) => item.id === view)) return;
     setActiveView(view);
     setGlobalSearch('');
-  };
-  const changeDeviceMode = (nextMode) => {
-    if (!deviceModes[nextMode]) return;
-    window.localStorage.setItem(DEVICE_MODE_STORAGE_KEY, nextMode);
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set('mode', nextMode);
-    window.history.replaceState({}, '', nextUrl);
-    setDeviceMode(nextMode);
-    setActiveView(deviceModes[nextMode].initialView);
-    setActiveTable(null);
-    setSelectedOrder(null);
-    if (nextMode !== 'manager') setBasket({});
-    setGlobalSearch('');
-    notify(`Đã chuyển sang ${deviceModes[nextMode].label}`);
   };
   const reconnectServer = () => {
     setServerAvailable(false);
@@ -756,6 +822,18 @@ function App() {
     setStaffModal({ open: false, staff: null });
     notify(draft.id ? 'Đã cập nhật thông tin nhân viên' : 'Đã thêm nhân viên mới');
   };
+  const saveAccount = async (draft) => {
+    try {
+      const response = await apiRequest('/api/auth/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Không thể tạo tài khoản.');
+      setAccounts((current) => [...current, payload.user]);
+      setAccountModalOpen(false);
+      notify(`Đã tạo tài khoản ${payload.user.username}`);
+    } catch (accountError) {
+      notify(accountError.message || 'Không thể tạo tài khoản');
+    }
+  };
   const toggleStaff = (person) => {
     setStaff((current) => current.map((item) => item.id === person.id ? { ...item, active: !item.active } : item));
     notify(person.active ? `Đã chuyển ${person.name} sang trạng thái nghỉ` : `Đã kích hoạt ${person.name}`);
@@ -788,12 +866,12 @@ function App() {
   if (activeView === 'sales') content = <SalesPage products={products} basket={basket} activeTable={activeTable} onQuantityChange={changeQuantity} onCheckout={openCheckout} onNavigate={navigate} />;
   if (activeView === 'kitchen') content = <KitchenPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onStageChange={updateKitchenStage} onSelectOrder={setSelectedOrder} />;
   if (activeView === 'products') content = <ProductsPage products={products} searchValue={globalSearch} onSearch={setGlobalSearch} onCreateProduct={() => setProductModal({ open: true, product: null })} onEditProduct={(product) => setProductModal({ open: true, product })} onDeleteProduct={deleteProduct} />;
-  if (activeView === 'staff') content = <StaffPage staff={staff} searchValue={globalSearch} onSearch={setGlobalSearch} onCreate={() => setStaffModal({ open: true, staff: null })} onEdit={(person) => setStaffModal({ open: true, staff: person })} onToggle={toggleStaff} onDelete={deleteStaff} />;
+  if (activeView === 'staff') content = <StaffPage staff={staff} accounts={accounts} searchValue={globalSearch} onSearch={setGlobalSearch} onCreate={() => setStaffModal({ open: true, staff: null })} onCreateAccount={() => setAccountModalOpen(true)} onEdit={(person) => setStaffModal({ open: true, staff: person })} onToggle={toggleStaff} onDelete={deleteStaff} />;
   if (activeView === 'inventory') content = <InventoryPage inventory={inventory} searchValue={globalSearch} onSearch={setGlobalSearch} onRestock={restockInventory} />;
   if (activeView === 'orders') content = <OrdersPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectOrder={setSelectedOrder} onExport={exportOrders} />;
   if (activeView === 'reports') content = <ReportsPage stats={stats} products={products} orders={orders} />;
 
-  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} items={visibleNavItems} deviceMode={deviceMode} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} deviceMode={deviceMode} syncStatus={syncStatus} onDeviceModeChange={changeDeviceMode} onReconnect={reconnectServer} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} items={visibleNavItems} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} items={visibleNavItems} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{checkoutOpen && <CheckoutModal products={products} basket={basket} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completeCheckout} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
+  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} items={visibleNavItems} user={user} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} deviceMode={deviceMode} syncStatus={syncStatus} onReconnect={reconnectServer} user={user} onLogout={onLogout} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} items={visibleNavItems} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} items={visibleNavItems} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{accountModalOpen && <AccountFormModal onClose={() => setAccountModalOpen(false)} onSave={saveAccount} />}{checkoutOpen && <CheckoutModal products={products} basket={basket} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completeCheckout} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<AuthGate />);
