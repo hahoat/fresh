@@ -16,7 +16,7 @@
     {
       "binding": "DB",
       "database_name": "fresh-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "19fac913-00b1-47e5-8b4c-9c4f7804d234",
       "migrations_dir": "./migrations"
     }
   ],
