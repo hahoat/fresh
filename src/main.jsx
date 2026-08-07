@@ -670,9 +670,15 @@ function App({ user, onLogout }) {
         if (cancelled) return;
         remoteRevisionRef.current = payload.revision || 0;
         if (payload.state) {
-          const menuNeedsBootstrap = deviceMode === 'manager' && mergeMenuProducts(payload.state.products).length !== (payload.state.products || []).length;
-          applyRemoteState(payload.state);
-          if (menuNeedsBootstrap) await syncSharedStateRef.current?.(true);
+          const remoteHasData = sharedStateKeys.some((key) => Array.isArray(payload.state[key]) && payload.state[key].length > 0);
+          const freshRemoteDatabase = payload.revision === 0 && !remoteHasData;
+          if (deviceMode === 'manager' && freshRemoteDatabase) {
+            await syncSharedStateRef.current?.(true);
+          } else {
+            const menuNeedsBootstrap = deviceMode === 'manager' && mergeMenuProducts(payload.state.products).length !== (payload.state.products || []).length;
+            applyRemoteState(payload.state);
+            if (menuNeedsBootstrap) await syncSharedStateRef.current?.(true);
+          }
         } else if (deviceMode === 'manager') {
           await syncSharedStateRef.current?.(true);
         } else {
