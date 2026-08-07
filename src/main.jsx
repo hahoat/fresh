@@ -154,7 +154,7 @@ const apiRequest = (url, options = {}) => {
   if (API_TOKEN) headers.set('X-Fresh-Token', API_TOKEN);
   const sessionToken = getSessionToken();
   if (sessionToken) headers.set('Authorization', `Bearer ${sessionToken}`);
-  return fetch(url, { ...options, headers });
+  return fetch(url, { ...options, credentials: options.credentials || 'same-origin', headers });
 };
 const apiEventsUrl = () => {
   const params = new URLSearchParams();
@@ -540,7 +540,6 @@ function AuthGate() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getSessionToken()) { setLoading(false); return; }
     apiRequest('/api/auth/me').then(async (response) => {
       if (!response.ok) throw new Error('Phiên đăng nhập đã hết hạn.');
       const payload = await readApiJson(response);
@@ -557,7 +556,7 @@ function AuthGate() {
       const response = await apiRequest('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
       const payload = await readApiJson(response);
       if (!response.ok) throw new Error(payload.error || 'Không thể đăng nhập.');
-      window.localStorage.setItem(SESSION_STORAGE_KEY, payload.sessionToken);
+      if (payload.sessionToken) window.localStorage.setItem(SESSION_STORAGE_KEY, payload.sessionToken);
       setUser(payload.user);
     } catch (loginError) {
       setError(displayApiError(loginError, 'Không thể đăng nhập.'));
@@ -696,21 +695,25 @@ function App({ user, onLogout }) {
 
   useEffect(() => {
     if (!serverAvailable) return undefined;
-    const events = new EventSource(apiEventsUrl());
-    events.onopen = () => setSyncStatus('online');
-    events.addEventListener('state', (event) => {
+    let cancelled = false;
+    const pollState = async () => {
       try {
-        const payload = JSON.parse(event.data);
-        if (!payload.state || (payload.revision && payload.revision <= remoteRevisionRef.current)) return;
-        remoteRevisionRef.current = payload.revision || remoteRevisionRef.current;
-        applyRemoteState(payload.state);
+        const response = await apiRequest('/api/state', { headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error('Máy chủ không phản hồi');
+        const payload = await readApiJson(response);
+        if (cancelled) return;
+        if (payload.state && (!payload.revision || payload.revision > remoteRevisionRef.current)) {
+          remoteRevisionRef.current = payload.revision || remoteRevisionRef.current;
+          applyRemoteState(payload.state);
+        }
         setSyncStatus('online');
       } catch {
-        setSyncStatus('offline');
+        if (!cancelled) setSyncStatus('offline');
       }
-    });
-    events.onerror = () => setSyncStatus('offline');
-    return () => events.close();
+    };
+    pollState();
+    const timer = window.setInterval(pollState, 2500);
+    return () => { cancelled = true; window.clearInterval(timer); };
   }, [serverAvailable]);
 
   useEffect(() => {
