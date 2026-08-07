@@ -83,6 +83,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(21, 154, 97,
 .primary-button:hover { background: var(--green-dark); transform: translateY(-1px); }
 .outline-button { color: #557067; border: 1px solid var(--line); background: #fff; }
 .outline-button:hover { color: var(--green-dark); border-color: #aad8bd; background: var(--surface); }
+.reset-data-button { color: #b4514a; border-color: #f0d4cf; background: #fff8f6; }
+.reset-data-button:hover { color: #9f332b; border-color: #e7b6ae; background: #fff1ee; }
 .full-button { width: 100%; }
 .stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
 .stat-card, .chart-panel, .orders-panel, .best-sellers, .quick-order-panel, .management-panel, .category-performance, .report-summary { border: 1px solid var(--line); border-radius: 14px; background: #fff; }
