@@ -14,7 +14,7 @@ const navItems = [
   { id: 'reports', label: 'Báo cáo', icon: 'chart' },
 ];
 
-const categories = ['Tất cả', 'Coffee', 'Trà Sữa', 'Trà Trái Cây', 'Đá Xay', 'Sữa Chua', 'Nước Ép', 'Soda', 'Đồ Ăn Nhanh', 'Mỳ Cay', 'Pizza', 'Gà Rán & Sốt', 'Cơm Gà', 'Set Gà', 'Bánh Mỳ', 'Khác', 'Đồ uống', 'Ăn vặt', 'Combo'];
+const categories = ['Tất cả', 'Coffee', 'Trà Sữa', 'Trà Trái Cây', 'Đá Xay', 'Sữa Chua', 'Nước Ép', 'Soda', 'Đồ Ăn Nhanh', 'Mỳ Cay', 'Pizza', 'Gà Rán & Sốt', 'Cơm Gà', 'Sét Gà', 'Set Gà', 'Bánh Mỳ', 'Khác', 'Đồ uống', 'Ăn vặt', 'Combo'];
 
 const initialProducts = [
   { id: 'peach-tea', name: 'Trà đào cam sả', category: 'Đồ uống', price: 35000, sold: 128, revenue: 2816000, accent: 'orange', icon: '🍊', stock: 42 },
@@ -34,11 +34,27 @@ const initialProducts = [
   { id: 'banh-mi', name: 'Bánh Mỳ Ấp Chảo Truyền Thống', category: 'Bánh Mỳ', price: 40000, sold: 14, revenue: 560000, accent: 'yellow', icon: '🥖', stock: 12 },
 ];
 
+const userMenuCatalog = [
+  [1,'Coffee Đen','Coffee',25000],[2,'Coffee Nâu','Coffee',25000],[3,'Coffee Kem Muối','Coffee',25000],[4,'Coffee Kem Trứng','Coffee',35000],[5,'Coffee Bạc Xỉu','Coffee',30000],[6,'Coffee Cốt Dừa','Coffee',36000],[7,'Phindi Hạnh Nhân','Coffee',30000],[8,'Phindi Caramel','Coffee',30000],
+  [9,'Trà Sữa Trân Châu Đường Đen','Trà Sữa',30000],[10,'Trà Sữa Socola','Trà Sữa',30000],[11,'Trà Sữa Hồng Trà','Trà Sữa',30000],[12,'Trà Sữa Nhài','Trà Sữa',30000],[13,'Trà Sữa Ô Long','Trà Sữa',30000],[14,'Trà Sữa Dâu Tây','Trà Sữa',30000],[15,'Trà Sữa Kem Matcha','Trà Sữa',35000],[16,'Trà Sữa Hồng Trà Kem Mặn','Trà Sữa',35000],[17,'Trà Sữa Kem Trứng Dừa Nướng','Trà Sữa',35000],[18,'Sữa Tươi Trân Châu Đường Đen','Trà Sữa',30000],
+  [19,'Trà Đào','Trà Trái Cây',20000],[20,'Trà Chanh','Trà Trái Cây',15000],[21,'Trà Quất Nha Đam','Trà Trái Cây',15000],[22,'Trà O Long Sen Vàng','Trà Trái Cây',35000],[23,'Trà Sen Lá Nếp','Trà Trái Cây',35000],[24,'Trà Xoài Chanh Dây','Trà Trái Cây',30000],[25,'Trà Cam Xoài','Trà Trái Cây',30000],[26,'Trà Kiwi','Trà Trái Cây',30000],[27,'Trà Đào Cam Sả','Trà Trái Cây',30000],
+  [28,'Đá Xay Matcha','Đá Xay',30000],[29,'Đá Xay Việt Quất','Đá Xay',30000],[30,'Đá Xay Bạc Hà','Đá Xay',30000],[31,'Đá Xay Matcha Latte','Đá Xay',35000],[32,'Sữa Chua Kiều Mạch','Sữa Chua',35000],[33,'Sữa Chua Đá Xay','Sữa Chua',25000],[34,'Sữa Chua Xoài Dâu','Sữa Chua',30000],[35,'Sữa Chua Chanh Dây','Sữa Chua',30000],
+  [36,'Nước Ép Cam','Nước Ép',30000],[37,'Nước Ép Dưa Hấu','Nước Ép',30000],[38,'Nước Ép Táo','Nước Ép',30000],[39,'Soda Việt Quất','Soda',25000],[40,'Soda Dâu','Soda',25000],[41,'Soda Bạc Hà','Soda',25000],[42,'Soda Biển Xanh','Soda',25000],[43,'Soda Táo','Soda',25000],
+  [44,'Xúc Xích','Đồ Ăn Nhanh',10000],[45,'Lạp Xưởng','Đồ Ăn Nhanh',15000],[46,'Nem Chua Rán','Đồ Ăn Nhanh',35000],[47,'Phomai Que','Đồ Ăn Nhanh',30000],[48,'Chả Cá Chiên Viên','Đồ Ăn Nhanh',30000],[49,'Khoai Tây Lắc Phô Mai','Đồ Ăn Nhanh',30000],[50,'Khoai Lang Kén','Đồ Ăn Nhanh',30000],[51,'Kimbap Chiên','Đồ Ăn Nhanh',35000],[52,'Topokki Sốt Phomai','Đồ Ăn Nhanh',40000],[53,'Chân Gà Sốt Thái','Đồ Ăn Nhanh',55000],[54,'Xoài Lắc','Đồ Ăn Nhanh',30000],[55,'Mẹt Chiên 7 Món','Đồ Ăn Nhanh',90000],
+  [56,'Mỳ Kim Chi Xúc Xích','Mỳ Cay',30000],[57,'Mỳ Kim Chi Thập Cẩm','Mỳ Cay',50000],[58,'Mỳ Kim Chi Hải Sản','Mỳ Cay',50000],[59,'Mỳ Bò Mỹ','Mỳ Cay',40000],[60,'Mỳ Sụn','Mỳ Cay',40000],
+  [61,'Pizza Thập Cẩm (size S)','Pizza',40000],[62,'Pizza Thập Cẩm (size M)','Pizza',70000],[63,'Pizza Hải Sản (size S)','Pizza',50000],[64,'Pizza Hải Sản (size M)','Pizza',80000],[65,'Pizza Chicago','Pizza',70000],
+  [66,'Đùi Gà Chiên','Gà Rán & Sốt',32000],[67,'Cánh Gà','Gà Rán & Sốt',32000],[68,'Miếng Gà Giòn','Gà Rán & Sốt',60000],[69,'Đùi/Cánh Sốt Hàn','Gà Rán & Sốt',35000],[70,'Đùi/Cánh Kem Hành','Gà Rán & Sốt',35000],[71,'Miếng Gà Giòn Sốt 3 Vị','Gà Rán & Sốt',70000],[72,'Đùi/Cánh Sốt Phomai','Gà Rán & Sốt',35000],
+  [73,'Cơm Đùi Sốt Mắm','Cơm Gà',50000],[74,'Cơm Đùi Sốt Hàn','Cơm Gà',50000],[75,'Sét Cánh Gà Chiên Mắm','Cơm Gà',90000],[76,'Sét Gà Miếng + Kimmbap','Sét Gà',80000],[77,'Sét Gà Miếng + Khoai Tây','Sét Gà',80000],[78,'Sét Gà Miếng + Kimmbap (2 người)','Sét Gà',150000],
+  [79,'Nem Nướng','Bánh Mỳ',40000],[80,'Bánh Mỳ Áp Chảo Truyền Thống','Bánh Mỳ',40000],[81,'Bánh Mỳ Áp Chảo Bò Tiêu','Bánh Mỳ',45000],[82,'Bò Húc','Khác',15000],[83,'Coca','Khác',10000],
+].map(([id,name,category,price]) => ({ id:`menu-${id}`, name, category, price, available:true, sold:0, revenue:0, stock:50, accent:'orange', icon:'🍽️' }));
+
 function mergeMenuProducts(savedProducts) {
   const saved = Array.isArray(savedProducts) && savedProducts.length ? savedProducts : [];
   const ids = new Set(saved.map((product) => product.id));
-  const missing = initialProducts.filter((product) => !ids.has(product.id));
-  return saved.length ? [...saved, ...missing] : initialProducts;
+  const names = new Set(saved.map((product) => product.name.trim().toLowerCase()));
+  const defaults = [...initialProducts, ...userMenuCatalog];
+  const missing = defaults.filter((product) => !ids.has(product.id) && !names.has(product.name.trim().toLowerCase()));
+  return saved.length ? [...saved, ...missing] : defaults;
 }
 
 const initialOrders = [
