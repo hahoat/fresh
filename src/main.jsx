@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
@@ -112,14 +112,37 @@ const money = (value) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`;
 const compactMoney = (value) => `${new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value)} ₫`;
 const STORAGE_KEY = 'fresh-restaurant-manager:v1';
 const LEGACY_STORAGE_KEY = 'fresh-sales-manager:v1';
+const DEVICE_MODE_STORAGE_KEY = 'fresh-device-mode:v1';
 const BASE_TODAY_STATS = { revenue: 8450000, orders: 86 };
+const sharedStateKeys = ['products', 'orders', 'tables', 'inventory', 'staff'];
+const deviceModes = {
+  manager: { label: 'Máy quản lý', initialView: 'overview' },
+  staff: { label: 'Máy gọi món', initialView: 'tables' },
+  kitchen: { label: 'Máy bếp', initialView: 'kitchen' },
+};
+
+function readDeviceMode() {
+  if (typeof window === 'undefined') return 'manager';
+  const queryMode = new URLSearchParams(window.location.search).get('mode');
+  if (queryMode && deviceModes[queryMode]) return queryMode;
+  const storedMode = window.localStorage.getItem(DEVICE_MODE_STORAGE_KEY);
+  return deviceModes[storedMode] ? storedMode : 'manager';
+}
+
+function stableJson(value) {
+  return JSON.stringify(value);
+}
+
+function sharedStateFrom(products, orders, tables, inventory, staff) {
+  return { products, orders, tables, inventory, staff };
+}
 
 function readStoredState() {
   if (typeof window === 'undefined') return {};
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem(LEGACY_STORAGE_KEY) || '{}';
     const stored = JSON.parse(raw);
-    return stored?.version === 1 || stored?.version === 2 ? stored : {};
+    return stored?.version === 1 || stored?.version === 2 || stored?.version === 3 ? stored : {};
   } catch {
     return {};
   }
@@ -168,38 +191,43 @@ function FreshMark({ compact = false }) {
   return <div className={`fresh-mark ${compact ? 'is-compact' : ''}`}><span className="fresh-leaf">⌁</span><span>fresh</span></div>;
 }
 
-function Sidebar({ activeView, onNavigate }) {
+function Sidebar({ activeView, onNavigate, items = navItems, deviceMode }) {
   return <aside className="sidebar">
     <div className="sidebar-brand"><FreshMark /></div>
     <nav className="side-nav" aria-label="Điều hướng chính">
-      {navItems.map((item) => <button key={item.id} className={`nav-item ${activeView === item.id ? 'active' : ''}`} onClick={() => onNavigate(item.id)}>
+      {items.map((item) => <button key={item.id} className={`nav-item ${activeView === item.id ? 'active' : ''}`} onClick={() => onNavigate(item.id)}>
         <Icon name={item.icon} size={20} />
         <span>{item.label}</span>
       </button>)}
     </nav>
     <div className="sidebar-profile">
       <div className="store-avatar"><Icon name="store" size={18} /></div>
-      <div><strong>fresh</strong><span>Chủ cửa hàng</span></div>
+      <div><strong>fresh</strong><span>{deviceModes[deviceMode]?.label || 'Chủ cửa hàng'}</span></div>
       <Icon name="down" size={16} />
     </div>
   </aside>;
 }
 
-function MobileNav({ activeView, onNavigate }) {
+function MobileNav({ activeView, onNavigate, items = navItems }) {
   return <nav className="mobile-nav" aria-label="Điều hướng di động">
-    {navItems.map((item) => <button key={item.id} className={`mobile-nav-item ${activeView === item.id ? 'active' : ''}`} onClick={() => onNavigate(item.id)}>
+    {items.map((item) => <button key={item.id} className={`mobile-nav-item ${activeView === item.id ? 'active' : ''}`} onClick={() => onNavigate(item.id)}>
       <Icon name={item.icon} size={19} />
       <span>{item.label}</span>
     </button>)}
   </nav>;
 }
 
-function Topbar({ title, globalSearch, onSearch, onMenu, onNotification }) {
+function Topbar({ title, globalSearch, onSearch, onMenu, onNotification, deviceMode, syncStatus, onDeviceModeChange, onReconnect }) {
+  const syncLabels = { connecting: 'Đang kết nối', syncing: 'Đang đồng bộ', online: 'Máy chủ live', offline: 'Chỉ máy này' };
   return <header className="topbar">
     <button className="mobile-menu" onClick={onMenu} aria-label="Mở menu"><Icon name="menu" size={22} /></button>
     <h1>{title}</h1>
     <div className="topbar-tools">
       <label className="global-search"><Icon name="search" size={18} /><input value={globalSearch} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm đơn, món, bàn..." /></label>
+      <select className="device-mode-select" value={deviceMode} onChange={(event) => onDeviceModeChange(event.target.value)} aria-label="Chế độ thiết bị">
+        {Object.entries(deviceModes).map(([value, mode]) => <option key={value} value={value}>{mode.label}</option>)}
+      </select>
+      <button className={`sync-pill ${syncStatus}`} onClick={onReconnect} title="Bấm để kết nối lại máy chủ"><span /> {syncLabels[syncStatus] || syncLabels.offline}</button>
       <button className="icon-button notification" onClick={onNotification} aria-label="Thông báo"><Icon name="bell" size={21} /><span>3</span></button>
       <div className="user-menu"><div className="user-avatar">NH</div><Icon name="down" size={16} /></div>
     </div>
@@ -429,9 +457,9 @@ function CheckoutModal({ products, basket, activeTable, onClose, onConfirm }) {
   return <div className="modal-backdrop" onClick={onClose}><form className="form-modal checkout-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>Hoàn tất đơn hàng</span><h2>Xác nhận thanh toán</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div>{activeTable && <div className="checkout-table-banner"><Icon name="table" size={18} /><div><span>Bàn phục vụ</span><strong>{activeTable.name}</strong></div></div>}<div className="checkout-items">{items.map((product) => <div className="checkout-item" key={product.id}><span>{basket[product.id]}x {product.name}</span><strong>{money(product.price * basket[product.id])}</strong></div>)}</div><div className="checkout-total"><span>Tổng thanh toán</span><strong>{money(total)}</strong></div><div className="form-grid"><label><span>Tên khách hàng</span><input value={customer} onChange={(event) => setCustomer(event.target.value)} /></label><label><span>Phương thức thanh toán</span><select value={payment} onChange={(event) => setPayment(event.target.value)}><option>Tiền mặt</option><option>Chuyển khoản</option><option>Ví điện tử</option></select></label><label className="full-field"><span>Ghi chú đơn hàng</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ví dụ: ít cay, giao tại quầy..." rows="2" /></label></div><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Quay lại</button><button type="submit" className="primary-button"><Icon name="check" size={17} /> Xác nhận tạo đơn</button></div></form></div>;
 }
 
-function MobileMenuSheet({ open, activeView, onNavigate, onClose }) {
+function MobileMenuSheet({ open, activeView, onNavigate, onClose, items = navItems }) {
   if (!open) return null;
-  return <div className="modal-backdrop mobile-menu-backdrop" onClick={onClose}><aside className="mobile-menu-sheet" onClick={(event) => event.stopPropagation()}><div className="detail-header"><div><span>Điều hướng</span><h2>fresh</h2></div><button className="icon-button" onClick={onClose} aria-label="Đóng menu"><Icon name="close" size={19} /></button></div><nav className="mobile-sheet-nav">{navItems.map((item) => <button key={item.id} className={`nav-item ${activeView === item.id ? 'active' : ''}`} onClick={() => { onNavigate(item.id); onClose(); }}><Icon name={item.icon} size={20} /><span>{item.label}</span></button>)}</nav></aside></div>;
+  return <div className="modal-backdrop mobile-menu-backdrop" onClick={onClose}><aside className="mobile-menu-sheet" onClick={(event) => event.stopPropagation()}><div className="detail-header"><div><span>Điều hướng</span><h2>fresh</h2></div><button className="icon-button" onClick={onClose} aria-label="Đóng menu"><Icon name="close" size={19} /></button></div><nav className="mobile-sheet-nav">{items.map((item) => <button key={item.id} className={`nav-item ${activeView === item.id ? 'active' : ''}`} onClick={() => { onNavigate(item.id); onClose(); }}><Icon name={item.icon} size={20} /><span>{item.label}</span></button>)}</nav></aside></div>;
 }
 
 function ReportsPage({ stats, products, orders }) {
@@ -447,14 +475,18 @@ function OrderDetail({ order, onClose, onStatusChange, onPrint }) {
 }
 
 function App() {
-  const [activeView, setActiveView] = useState('overview');
+  const [deviceMode, setDeviceMode] = useState(readDeviceMode);
+  const [activeView, setActiveView] = useState(() => deviceModes[readDeviceMode()]?.initialView || 'overview');
   const [persisted] = useState(readStoredState);
   const [products, setProducts] = useState(() => mergeMenuProducts(persisted.products));
   const [orders, setOrders] = useState(() => Array.isArray(persisted.orders) && persisted.orders.length ? persisted.orders : initialOrders);
   const [tables, setTables] = useState(() => Array.isArray(persisted.tables) && persisted.tables.length >= 20 ? persisted.tables : initialTables20);
   const [inventory, setInventory] = useState(() => Array.isArray(persisted.inventory) && persisted.inventory.length ? persisted.inventory : initialInventory);
   const [staff, setStaff] = useState(() => Array.isArray(persisted.staff) && persisted.staff.length ? persisted.staff : initialStaff);
-  const [basket, setBasket] = useState(() => persisted.basket || { 'peach-tea': 2, tokbokki: 1 });
+  const [basket, setBasket] = useState(() => {
+    if (persisted.basket) return persisted.basket;
+    return readDeviceMode() === 'manager' ? { 'peach-tea': 2, tokbokki: 1 } : {};
+  });
   const [activeTable, setActiveTable] = useState(null);
   const [globalSearch, setGlobalSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -463,17 +495,166 @@ function App() {
   const [staffModal, setStaffModal] = useState({ open: false, staff: null });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('connecting');
+  const [remoteReady, setRemoteReady] = useState(false);
+  const [serverAvailable, setServerAvailable] = useState(false);
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
+  const sharedState = useMemo(() => sharedStateFrom(products, orders, tables, inventory, staff), [products, orders, tables, inventory, staff]);
+  const sharedStateRef = useRef(sharedState);
+  const lastSyncedSharedRef = useRef(null);
+  const remoteRevisionRef = useRef(0);
+  const skipSyncRef = useRef(false);
+  const syncTimerRef = useRef(null);
+  const syncSharedStateRef = useRef(null);
+
+  sharedStateRef.current = sharedState;
+
+  const applyRemoteState = (remoteState) => {
+    if (!remoteState || typeof remoteState !== 'object') return;
+    const nextProducts = mergeMenuProducts(remoteState.products);
+    const nextOrders = Array.isArray(remoteState.orders) && remoteState.orders.length ? remoteState.orders : initialOrders;
+    const nextTables = Array.isArray(remoteState.tables) && remoteState.tables.length >= 20 ? remoteState.tables : initialTables20;
+    const nextInventory = Array.isArray(remoteState.inventory) && remoteState.inventory.length ? remoteState.inventory : initialInventory;
+    const nextStaff = Array.isArray(remoteState.staff) && remoteState.staff.length ? remoteState.staff : initialStaff;
+    const nextSharedState = sharedStateFrom(nextProducts, nextOrders, nextTables, nextInventory, nextStaff);
+    skipSyncRef.current = true;
+    setProducts(nextProducts);
+    setOrders(nextOrders);
+    setTables(nextTables);
+    setInventory(nextInventory);
+    setStaff(nextStaff);
+    lastSyncedSharedRef.current = nextSharedState;
+  };
+
+  const syncSharedState = async (replace = false) => {
+    if (!remoteReady && !replace) return;
+    const current = sharedStateRef.current;
+    const changes = {};
+    if (!replace && lastSyncedSharedRef.current) {
+      sharedStateKeys.forEach((key) => {
+        if (stableJson(current[key]) !== stableJson(lastSyncedSharedRef.current[key])) changes[key] = current[key];
+      });
+      if (!Object.keys(changes).length) return;
+    }
+    try {
+      setSyncStatus('syncing');
+      const response = await fetch('/api/state', {
+        method: replace ? 'PUT' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(replace ? { state: current, deviceMode } : { changes, deviceMode }),
+      });
+      if (!response.ok) throw new Error('Máy chủ không nhận dữ liệu');
+      const payload = await response.json();
+      remoteRevisionRef.current = payload.revision || remoteRevisionRef.current;
+      if (payload.state) applyRemoteState(payload.state);
+      setServerAvailable(true);
+      setSyncStatus('online');
+    } catch {
+      setServerAvailable(false);
+      setSyncStatus('offline');
+    }
+  };
+  syncSharedStateRef.current = syncSharedState;
+
+  useEffect(() => {
+    let cancelled = false;
+    const connect = async () => {
+      setSyncStatus('connecting');
+      try {
+        const response = await fetch('/api/state', { headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error('Máy chủ không phản hồi');
+        const payload = await response.json();
+        if (cancelled) return;
+        remoteRevisionRef.current = payload.revision || 0;
+        if (payload.state) {
+          const menuNeedsBootstrap = deviceMode === 'manager' && mergeMenuProducts(payload.state.products).length !== (payload.state.products || []).length;
+          applyRemoteState(payload.state);
+          if (menuNeedsBootstrap) await syncSharedStateRef.current?.(true);
+        } else if (deviceMode === 'manager') {
+          await syncSharedStateRef.current?.(true);
+        } else {
+          lastSyncedSharedRef.current = sharedStateRef.current;
+        }
+        if (cancelled) return;
+        setServerAvailable(true);
+        setRemoteReady(true);
+        setSyncStatus('online');
+      } catch {
+        if (cancelled) return;
+        setServerAvailable(false);
+        setRemoteReady(true);
+        setSyncStatus('offline');
+      }
+    };
+    connect();
+    return () => { cancelled = true; };
+  }, [deviceMode, connectionAttempt]);
+
+  useEffect(() => {
+    if (!serverAvailable) return undefined;
+    const events = new EventSource('/api/events');
+    events.onopen = () => setSyncStatus('online');
+    events.addEventListener('state', (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (!payload.state || (payload.revision && payload.revision <= remoteRevisionRef.current)) return;
+        remoteRevisionRef.current = payload.revision || remoteRevisionRef.current;
+        applyRemoteState(payload.state);
+        setSyncStatus('online');
+      } catch {
+        setSyncStatus('offline');
+      }
+    });
+    events.onerror = () => setSyncStatus('offline');
+    return () => events.close();
+  }, [serverAvailable]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, products, orders, tables, inventory, staff, basket }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 3, products, orders, tables, inventory, staff, basket }));
     } catch {
       // Local storage is a convenience layer; the UI still works if it is blocked.
     }
-  }, [products, orders, tables, inventory, staff, basket]);
+    if (!remoteReady) return undefined;
+    if (skipSyncRef.current) {
+      skipSyncRef.current = false;
+      return undefined;
+    }
+    window.clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = window.setTimeout(() => syncSharedStateRef.current?.(), 350);
+    return () => window.clearTimeout(syncTimerRef.current);
+  }, [products, orders, tables, inventory, staff, basket, remoteReady]);
 
   const pageTitles = { overview: 'Tổng quan', tables: 'Bàn ăn', sales: 'Bán hàng', kitchen: 'Màn hình bếp', products: 'Thực đơn', staff: 'Nhân viên', inventory: 'Kho nguyên liệu', orders: 'Đơn hàng', reports: 'Báo cáo' };
-  const navigate = (view) => { setActiveView(view); setGlobalSearch(''); };
+  const visibleNavItems = useMemo(() => {
+    if (deviceMode === 'manager') return navItems;
+    return navItems.filter((item) => deviceMode === 'staff' ? item.id === 'tables' : item.id === 'kitchen');
+  }, [deviceMode]);
+  const navigate = (view) => {
+    const isInternalOrderView = view === 'sales';
+    if (!isInternalOrderView && !visibleNavItems.some((item) => item.id === view)) return;
+    setActiveView(view);
+    setGlobalSearch('');
+  };
+  const changeDeviceMode = (nextMode) => {
+    if (!deviceModes[nextMode]) return;
+    window.localStorage.setItem(DEVICE_MODE_STORAGE_KEY, nextMode);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set('mode', nextMode);
+    window.history.replaceState({}, '', nextUrl);
+    setDeviceMode(nextMode);
+    setActiveView(deviceModes[nextMode].initialView);
+    setActiveTable(null);
+    setSelectedOrder(null);
+    if (nextMode !== 'manager') setBasket({});
+    setGlobalSearch('');
+    notify(`Đã chuyển sang ${deviceModes[nextMode].label}`);
+  };
+  const reconnectServer = () => {
+    setServerAvailable(false);
+    setRemoteReady(false);
+    setConnectionAttempt((current) => current + 1);
+  };
   const notify = (message) => { setToast(message); window.setTimeout(() => setToast(''), 3200); };
   const selectTable = (table) => {
     const isTakeaway = !table.id;
@@ -518,7 +699,7 @@ function App() {
       setTables((current) => current.map((table) => table.id === activeTable.id ? { ...table, status: 'Đang phục vụ', orderId: newOrder.id, total, since: newOrder.time } : table));
     }
     setActiveTable(null);
-    setActiveView('orders');
+    setActiveView(deviceMode === 'staff' ? 'tables' : 'orders');
     notify(`Đã tạo đơn ${newOrder.id} thành công`);
   };
   const saveProduct = (draft) => {
@@ -593,7 +774,7 @@ function App() {
   if (activeView === 'orders') content = <OrdersPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectOrder={setSelectedOrder} onExport={exportOrders} />;
   if (activeView === 'reports') content = <ReportsPage stats={stats} products={products} orders={orders} />;
 
-  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{checkoutOpen && <CheckoutModal products={products} basket={basket} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completeCheckout} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
+  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} items={visibleNavItems} deviceMode={deviceMode} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} deviceMode={deviceMode} syncStatus={syncStatus} onDeviceModeChange={changeDeviceMode} onReconnect={reconnectServer} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} items={visibleNavItems} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} items={visibleNavItems} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{checkoutOpen && <CheckoutModal products={products} basket={basket} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completeCheckout} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
