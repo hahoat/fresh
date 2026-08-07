@@ -14,13 +14,14 @@ Fresh là web quản lý nhà hàng/cửa hàng ăn vặt, giữ nguyên giao di
 npm install
 
 # Linux/macOS
-FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" npm start
+FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" VITE_FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" npm start
 ```
 
 `FRESH_ACCESS_TOKEN` là bắt buộc để API nhận dữ liệu. Không commit mã này vào GitHub. Trên PowerShell có thể dùng:
 
 ```powershell
 $env:FRESH_ACCESS_TOKEN = "dat-ma-truy-cap-rieng"
+$env:VITE_FRESH_ACCESS_TOKEN = $env:FRESH_ACCESS_TOKEN
 npm start
 ```
 
@@ -53,7 +54,7 @@ FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" npm run api
 FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" npm run dev
 ```
 
-Nếu đang mở giao diện ở `http://localhost:5173` mà bấm đăng nhập thấy báo không kết nối được máy chủ, hãy kiểm tra Terminal 1 đã chạy `npm run api` và hai lệnh dùng cùng một `FRESH_ACCESS_TOKEN`. Vite đã được cấu hình tự lấy mã từ `FRESH_ACCESS_TOKEN`; không cần khai báo thêm `VITE_FRESH_ACCESS_TOKEN`.
+Khi chạy Vite, proxy sẽ gửi mã truy cập từ máy phát triển sang API mà không nhúng mã vào bundle trình duyệt. Nếu đang mở giao diện ở `http://localhost:5173` mà bấm đăng nhập thấy báo không kết nối được máy chủ, hãy kiểm tra Terminal 1 đã chạy `npm run api` và hai lệnh dùng cùng một `FRESH_ACCESS_TOKEN`.
 
 ## Triển khai trên 3 máy
 
