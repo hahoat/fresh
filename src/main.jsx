@@ -8,12 +8,13 @@ const navItems = [
   { id: 'sales', label: 'Bán hàng', icon: 'cart' },
   { id: 'kitchen', label: 'Màn hình bếp', icon: 'chef' },
   { id: 'products', label: 'Thực đơn', icon: 'box' },
+  { id: 'staff', label: 'Nhân viên', icon: 'users' },
   { id: 'inventory', label: 'Kho nguyên liệu', icon: 'warehouse' },
   { id: 'orders', label: 'Đơn hàng', icon: 'clipboard' },
   { id: 'reports', label: 'Báo cáo', icon: 'chart' },
 ];
 
-const categories = ['Tất cả', 'Đồ uống', 'Ăn vặt', 'Combo'];
+const categories = ['Tất cả', 'Coffee', 'Trà Sữa', 'Trà Trái Cây', 'Đá Xay', 'Sữa Chua', 'Nước Ép', 'Soda', 'Đồ Ăn Nhanh', 'Mỳ Cay', 'Pizza', 'Gà Rán & Sốt', 'Cơm Gà', 'Set Gà', 'Bánh Mỳ', 'Khác', 'Đồ uống', 'Ăn vặt', 'Combo'];
 
 const initialProducts = [
   { id: 'peach-tea', name: 'Trà đào cam sả', category: 'Đồ uống', price: 35000, sold: 128, revenue: 2816000, accent: 'orange', icon: '🍊', stock: 42 },
@@ -22,6 +23,15 @@ const initialProducts = [
   { id: 'matcha', name: 'Trà sữa matcha', category: 'Đồ uống', price: 39000, sold: 64, revenue: 1248000, accent: 'lime', icon: '🥤', stock: 31 },
   { id: 'combo', name: 'Combo ăn vặt', category: 'Combo', price: 69000, sold: 51, revenue: 1098000, accent: 'yellow', icon: '🍿', stock: 12 },
   { id: 'lemon-tea', name: 'Trà chanh', category: 'Đồ uống', price: 29000, sold: 44, revenue: 638000, accent: 'lemon', icon: '🍋', stock: 38 },
+  { id: 'black-coffee', name: 'Coffee Đen', category: 'Coffee', price: 25000, sold: 38, revenue: 950000, accent: 'purple', icon: '☕', stock: 44 },
+  { id: 'milk-tea', name: 'Trà Sữa Trân Châu Đường Đen', category: 'Trà Sữa', price: 30000, sold: 42, revenue: 1260000, accent: 'yellow', icon: '🧋', stock: 35 },
+  { id: 'peach-mango', name: 'Trà Đào Cam Sả', category: 'Trà Trái Cây', price: 30000, sold: 32, revenue: 960000, accent: 'orange', icon: '🍑', stock: 29 },
+  { id: 'matcha-ice', name: 'Đá Xay Matcha', category: 'Đá Xay', price: 30000, sold: 27, revenue: 810000, accent: 'lime', icon: '🍵', stock: 22 },
+  { id: 'fried-chicken', name: 'Đùi Gà Chiên', category: 'Gà Rán & Sốt', price: 32000, sold: 25, revenue: 800000, accent: 'yellow', icon: '🍗', stock: 20 },
+  { id: 'pizza', name: 'Pizza Hải Sản size S', category: 'Pizza', price: 50000, sold: 18, revenue: 900000, accent: 'red', icon: '🍕', stock: 15 },
+  { id: 'spicy-noodle', name: 'Mỳ Kim Chi Hải Sản', category: 'Mỳ Cay', price: 50000, sold: 20, revenue: 1000000, accent: 'red', icon: '🍜', stock: 17 },
+  { id: 'chicken-rice', name: 'Cơm Đùi Sốt Mắm', category: 'Cơm Gà', price: 50000, sold: 16, revenue: 800000, accent: 'orange', icon: '🍱', stock: 18 },
+  { id: 'banh-mi', name: 'Bánh Mỳ Ấp Chảo Truyền Thống', category: 'Bánh Mỳ', price: 40000, sold: 14, revenue: 560000, accent: 'yellow', icon: '🥖', stock: 12 },
 ];
 
 const initialOrders = [
@@ -46,6 +56,7 @@ const initialTables = [
   { id: 'T11', name: 'Bàn 11', seats: 4, zone: 'Tầng lửng', status: 'Trống', orderId: null, total: 0, since: null },
   { id: 'T12', name: 'Bàn 12', seats: 8, zone: 'Tầng lửng', status: 'Trống', orderId: null, total: 0, since: null },
 ];
+const initialTables20 = [...initialTables, ...Array.from({ length: 8 }, (_, index) => ({ id: `T${String(index + 13).padStart(2, '0')}`, name: `Bàn ${index + 13}`, seats: [2, 4, 4, 6][index % 4], zone: 'Tầng lửng', status: 'Trống', orderId: null, total: 0, since: null }))];
 
 const initialInventory = [
   { id: 'inv-tea', name: 'Trà đào & cam sả', group: 'Nguyên liệu đồ uống', unit: 'kg', stock: 12.5, minStock: 5, supplier: 'Fresh Beverage' },
@@ -54,6 +65,15 @@ const initialInventory = [
   { id: 'inv-ricecake', name: 'Bánh gạo Hàn Quốc', group: 'Nguyên liệu bếp', unit: 'kg', stock: 8, minStock: 4, supplier: 'K-food supply' },
   { id: 'inv-cup', name: 'Ly nhựa 500ml', group: 'Bao bì', unit: 'cái', stock: 240, minStock: 100, supplier: 'Fresh Packaging' },
   { id: 'inv-potato', name: 'Khoai tây đông lạnh', group: 'Nguyên liệu bếp', unit: 'kg', stock: 2.5, minStock: 6, supplier: 'Bếp nhà hàng' },
+];
+
+const initialStaff = [
+  { id: 'staff-1', name: 'Nguyễn Thị Lan', role: 'Quản lý', shift: 'Sáng (6h–14h)', phone: 'Chưa cập nhật', active: true },
+  { id: 'staff-2', name: 'Trần Văn Minh', role: 'Phục vụ', shift: 'Sáng (6h–14h)', phone: 'Chưa cập nhật', active: true },
+  { id: 'staff-3', name: 'Lê Thị Hoa', role: 'Phục vụ', shift: 'Chiều (14h–22h)', phone: 'Chưa cập nhật', active: true },
+  { id: 'staff-4', name: 'Phạm Văn Nam', role: 'Bếp trưởng', shift: 'Cả ngày', phone: 'Chưa cập nhật', active: true },
+  { id: 'staff-5', name: 'Hoàng Thị Mai', role: 'Thu ngân', shift: 'Chiều (14h–22h)', phone: 'Chưa cập nhật', active: false },
+  { id: 'staff-6', name: 'Đỗ Văn Tuấn', role: 'Phục vụ', shift: 'Tối (18h–23h)', phone: 'Chưa cập nhật', active: true },
 ];
 
 const revenuePoints = [
@@ -94,6 +114,7 @@ function Icon({ name, size = 20, strokeWidth = 1.8 }) {
     table: <><path d="M4 10h16M6 10v9M18 10v9M3 6h18l-1 4H4Z" /><path d="M9 19h6" /></>,
     chef: <><path d="M6 10h12v10H6z" /><path d="M8 10V7.5a2.5 2.5 0 0 1 5-1 2.5 2.5 0 0 1 5 1V10" /><path d="M9 14h6M9 17h4" /></>,
     warehouse: <><path d="m3 10 9-6 9 6v10H3Z" /><path d="M7 20v-6h10v6M7 11h10" /></>,
+    users: <><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20" /><circle cx="10" cy="7" r="3" /><path d="M16 4.5a3 3 0 0 1 0 5.8M20 20v-1.2a3.5 3.5 0 0 0-2.5-3.3" /></>,
     cart: <><circle cx="9" cy="20" r="1.4" /><circle cx="18" cy="20" r="1.4" /><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.5L21 8H6" /></>,
     box: <><path d="m4 7 8-4 8 4v10l-8 4-8-4Z" /><path d="m4 7 8 4 8-4M12 11v10" /></>,
     clipboard: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4.5V3h6v1.5M8 9h8M8 13h8M8 17h5" /></>,
@@ -321,6 +342,20 @@ function InventoryPage({ inventory, searchValue, onSearch, onRestock }) {
   return <div className="page-content"><div className="page-intro"><div><h2>Kho nguyên liệu</h2><p>Theo dõi tồn kho nguyên liệu, bao bì và mức cần nhập.</p></div><button className="outline-button" onClick={() => window.print()}><Icon name="clipboard" size={17} /> In danh sách kho</button></div><div className="inventory-summary"><div><span>Tổng mặt hàng</span><strong>{inventory.length}</strong></div><div className={lowStockCount ? 'is-warning' : ''}><span>Sắp hết hàng</span><strong>{lowStockCount}</strong></div><div><span>Nhà cung cấp</span><strong>{new Set(inventory.map((item) => item.supplier)).size}</strong></div></div><section className="management-panel"><div className="management-toolbar"><label className="local-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm nguyên liệu..." /></label><span className="inventory-note"><Icon name="spark" size={15} /> Cập nhật theo ca</span></div><div className="products-table-wrap"><table className="products-table inventory-table"><thead><tr><th>Nguyên liệu</th><th>Nhóm</th><th>Tồn hiện tại</th><th>Mức tối thiểu</th><th>Trạng thái</th><th /></tr></thead><tbody>{filteredInventory.map((item) => { const isLow = item.stock <= item.minStock; return <tr key={item.id}><td><div className="inventory-name"><span className={`inventory-dot ${isLow ? 'low' : ''}`} /><div><strong>{item.name}</strong><small>{item.supplier}</small></div></div></td><td>{item.group}</td><td><strong className={isLow ? 'stock low' : 'stock'}>{quantity(item.stock)} {item.unit}</strong></td><td>{quantity(item.minStock)} {item.unit}</td><td><StatusBadge tone={isLow ? 'warning' : 'success'}>{isLow ? 'Cần nhập' : 'Đủ dùng'}</StatusBadge></td><td><button className="outline-button restock-button" onClick={() => onRestock(item)}><Icon name="plus" size={14} /> Nhập thêm</button></td></tr>; })}</tbody></table>{filteredInventory.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy nguyên liệu</p></div>}</div></section></div>;
 }
 
+function StaffPage({ staff, searchValue, onSearch, onCreate, onEdit, onToggle, onDelete }) {
+  const query = searchValue.trim().toLowerCase();
+  const visible = staff.filter((person) => !query || `${person.name} ${person.role} ${person.phone}`.toLowerCase().includes(query));
+  return <div className="page-content"><div className="page-intro"><div><h2>Nhân viên</h2><p>Quản lý nhân sự, ca làm và trạng thái làm việc.</p></div><button className="primary-button" onClick={onCreate}><Icon name="plus" size={18} /> Thêm nhân viên</button></div><section className="management-panel"><div className="management-toolbar"><label className="local-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm tên, chức vụ, số điện thoại..." /></label><span className="inventory-note"><Icon name="users" size={15} /> {staff.filter((person) => person.active).length} nhân viên đang làm việc</span></div><div className="products-table-wrap"><table className="products-table staff-table"><thead><tr><th>Họ tên</th><th>Chức vụ</th><th>Ca làm</th><th>Số điện thoại</th><th>Trạng thái</th><th /></tr></thead><tbody>{visible.map((person) => <tr key={person.id}><td><strong>{person.name}</strong></td><td><span className="role-badge">{person.role}</span></td><td>{person.shift}</td><td>{person.phone}</td><td><StatusBadge tone={person.active ? 'success' : 'cancelled'}>{person.active ? 'Đang làm' : 'Nghỉ'}</StatusBadge></td><td><div className="row-actions"><button className="outline-button staff-action" onClick={() => onToggle(person)}>{person.active ? 'Cho nghỉ' : 'Kích hoạt'}</button><button className="icon-button small-icon" onClick={() => onEdit(person)} aria-label={`Sửa ${person.name}`}><Icon name="edit" size={16} /></button><button className="icon-button small-icon" onClick={() => onDelete(person)} aria-label={`Xóa ${person.name}`}><Icon name="trash" size={16} /></button></div></td></tr>)}</tbody></table>{visible.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy nhân viên</p></div>}</div></section></div>;
+}
+
+function StaffFormModal({ staff, onClose, onSave }) {
+  const [draft, setDraft] = useState(() => staff ? { ...staff } : { name: '', role: 'Phục vụ', shift: 'Sáng (6h–14h)', phone: '', active: true });
+  const update = (field, value) => setDraft((current) => ({ ...current, [field]: value }));
+  const canSave = draft.name.trim() && draft.phone.trim();
+  const submit = (event) => { event.preventDefault(); if (canSave) onSave({ ...draft, name: draft.name.trim(), phone: draft.phone.trim() }); };
+  return <div className="modal-backdrop" onClick={onClose}><form className="form-modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}><div className="detail-header"><div><span>{staff ? 'Chỉnh sửa thông tin' : 'Thêm nhân viên mới'}</span><h2>{staff ? staff.name : 'Nhân viên mới'}</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Đóng"><Icon name="close" size={19} /></button></div><div className="form-grid"><label><span>Họ và tên</span><input value={draft.name} onChange={(event) => update('name', event.target.value)} autoFocus /></label><label><span>Chức vụ</span><select value={draft.role} onChange={(event) => update('role', event.target.value)}><option>Quản lý</option><option>Phục vụ</option><option>Bếp trưởng</option><option>Thu ngân</option><option>Part-time</option></select></label><label><span>Ca làm</span><select value={draft.shift} onChange={(event) => update('shift', event.target.value)}><option>Sáng (6h–14h)</option><option>Chiều (14h–22h)</option><option>Tối (18h–23h)</option><option>Cả ngày</option></select></label><label><span>Số điện thoại</span><input value={draft.phone} onChange={(event) => update('phone', event.target.value)} /></label></div><div className="form-actions"><button type="button" className="outline-button" onClick={onClose}>Hủy</button><button type="submit" className="primary-button" disabled={!canSave}>{staff ? 'Lưu thay đổi' : 'Thêm nhân viên'}</button></div></form></div>;
+}
+
 function SalesPage({ products, basket, activeTable, onQuantityChange, onCheckout, onNavigate }) {
   const [category, setCategory] = useState('Tất cả');
   const visibleProducts = category === 'Tất cả' ? products : products.filter((product) => product.category === category);
@@ -391,26 +426,28 @@ function App() {
   const [persisted] = useState(readStoredState);
   const [products, setProducts] = useState(() => Array.isArray(persisted.products) && persisted.products.length ? persisted.products : initialProducts);
   const [orders, setOrders] = useState(() => Array.isArray(persisted.orders) && persisted.orders.length ? persisted.orders : initialOrders);
-  const [tables, setTables] = useState(() => Array.isArray(persisted.tables) && persisted.tables.length ? persisted.tables : initialTables);
+  const [tables, setTables] = useState(() => Array.isArray(persisted.tables) && persisted.tables.length >= 20 ? persisted.tables : initialTables20);
   const [inventory, setInventory] = useState(() => Array.isArray(persisted.inventory) && persisted.inventory.length ? persisted.inventory : initialInventory);
+  const [staff, setStaff] = useState(() => Array.isArray(persisted.staff) && persisted.staff.length ? persisted.staff : initialStaff);
   const [basket, setBasket] = useState(() => persisted.basket || { 'peach-tea': 2, tokbokki: 1 });
   const [activeTable, setActiveTable] = useState(null);
   const [globalSearch, setGlobalSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [toast, setToast] = useState('');
   const [productModal, setProductModal] = useState({ open: false, product: null });
+  const [staffModal, setStaffModal] = useState({ open: false, staff: null });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, products, orders, tables, inventory, basket }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, products, orders, tables, inventory, staff, basket }));
     } catch {
       // Local storage is a convenience layer; the UI still works if it is blocked.
     }
-  }, [products, orders, tables, inventory, basket]);
+  }, [products, orders, tables, inventory, staff, basket]);
 
-  const pageTitles = { overview: 'Tổng quan', tables: 'Bàn ăn', sales: 'Bán hàng', kitchen: 'Màn hình bếp', products: 'Thực đơn', inventory: 'Kho nguyên liệu', orders: 'Đơn hàng', reports: 'Báo cáo' };
+  const pageTitles = { overview: 'Tổng quan', tables: 'Bàn ăn', sales: 'Bán hàng', kitchen: 'Màn hình bếp', products: 'Thực đơn', staff: 'Nhân viên', inventory: 'Kho nguyên liệu', orders: 'Đơn hàng', reports: 'Báo cáo' };
   const navigate = (view) => { setActiveView(view); setGlobalSearch(''); };
   const notify = (message) => { setToast(message); window.setTimeout(() => setToast(''), 3200); };
   const selectTable = (table) => {
@@ -488,6 +525,21 @@ function App() {
     setInventory((current) => current.map((entry) => entry.id === item.id ? { ...entry, stock: Number((entry.stock + refillAmount).toFixed(1)) } : entry));
     notify(`Đã nhập thêm ${item.name}`);
   };
+  const saveStaff = (draft) => {
+    const person = { ...draft, id: draft.id || `staff-${Date.now()}` };
+    setStaff((current) => draft.id ? current.map((item) => item.id === draft.id ? { ...item, ...person } : item) : [...current, person]);
+    setStaffModal({ open: false, staff: null });
+    notify(draft.id ? 'Đã cập nhật thông tin nhân viên' : 'Đã thêm nhân viên mới');
+  };
+  const toggleStaff = (person) => {
+    setStaff((current) => current.map((item) => item.id === person.id ? { ...item, active: !item.active } : item));
+    notify(person.active ? `Đã chuyển ${person.name} sang trạng thái nghỉ` : `Đã kích hoạt ${person.name}`);
+  };
+  const deleteStaff = (person) => {
+    if (!window.confirm(`Xóa nhân viên “${person.name}”?`)) return;
+    setStaff((current) => current.filter((item) => item.id !== person.id));
+    notify(`Đã xóa ${person.name}`);
+  };
   const exportOrders = () => {
     const rows = [['Mã đơn', 'Khách hàng', 'Sản phẩm', 'Tổng tiền', 'Trạng thái', 'Thời gian'], ...orders.map((order) => [order.id, order.customer, order.items, order.total, order.status, order.time])];
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
@@ -511,11 +563,12 @@ function App() {
   if (activeView === 'sales') content = <SalesPage products={products} basket={basket} activeTable={activeTable} onQuantityChange={changeQuantity} onCheckout={openCheckout} onNavigate={navigate} />;
   if (activeView === 'kitchen') content = <KitchenPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onStageChange={updateKitchenStage} onSelectOrder={setSelectedOrder} />;
   if (activeView === 'products') content = <ProductsPage products={products} searchValue={globalSearch} onSearch={setGlobalSearch} onCreateProduct={() => setProductModal({ open: true, product: null })} onEditProduct={(product) => setProductModal({ open: true, product })} onDeleteProduct={deleteProduct} />;
+  if (activeView === 'staff') content = <StaffPage staff={staff} searchValue={globalSearch} onSearch={setGlobalSearch} onCreate={() => setStaffModal({ open: true, staff: null })} onEdit={(person) => setStaffModal({ open: true, staff: person })} onToggle={toggleStaff} onDelete={deleteStaff} />;
   if (activeView === 'inventory') content = <InventoryPage inventory={inventory} searchValue={globalSearch} onSearch={setGlobalSearch} onRestock={restockInventory} />;
   if (activeView === 'orders') content = <OrdersPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectOrder={setSelectedOrder} onExport={exportOrders} />;
   if (activeView === 'reports') content = <ReportsPage stats={stats} products={products} orders={orders} />;
 
-  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{checkoutOpen && <CheckoutModal products={products} basket={basket} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completeCheckout} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
+  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{checkoutOpen && <CheckoutModal products={products} basket={basket} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completeCheckout} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
