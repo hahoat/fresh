@@ -1,6 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
@@ -8,16 +9,30 @@ const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || '0.0.0.0';
 const dataDir = process.env.FRESH_DATA_DIR || path.join(rootDir, 'data');
 const dataFile = process.env.FRESH_DATA_FILE || path.join(dataDir, 'fresh-data.json');
+const usersFile = process.env.FRESH_USERS_FILE || path.join(dataDir, 'fresh-users.json');
 const distDir = path.join(rootDir, 'dist');
 const maxBodySize = 8 * 1024 * 1024;
 const accessToken = String(process.env.FRESH_ACCESS_TOKEN || '').trim();
+const sessionTtlMs = 12 * 60 * 60 * 1000;
 
 let sharedState = null;
 let revision = 0;
 let updatedAt = null;
+let users = [];
 const eventClients = new Set();
+const sessions = new Map();
 
 const stateKeys = ['products', 'orders', 'tables', 'inventory', 'staff'];
+const rolePermissions = {
+  manager: stateKeys,
+  staff: ['products', 'orders', 'tables'],
+  kitchen: ['orders', 'tables'],
+};
+const defaultUsers = [
+  { username: 'admin', name: 'Quản lý Fresh', role: 'manager', password: 'admin123' },
+  { username: 'phucvu', name: 'Nhân viên phục vụ', role: 'staff', password: 'phucvu123' },
+  { username: 'bep', name: 'Bếp Fresh', role: 'kitchen', password: 'bep12345' },
+];
 
 function normalizeState(value) {
   const source = value && typeof value === 'object' ? value : {};
@@ -42,6 +57,73 @@ function loadState() {
   } catch (error) {
     if (error.code !== 'ENOENT') console.error(`[fresh] Không đọc được dữ liệu: ${error.message}`);
   }
+}
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+  const derivedKey = crypto.scryptSync(password, salt, 64);
+  return `${salt}:${derivedKey.toString('hex')}`;
+}
+
+function verifyPassword(password, storedHash) {
+  try {
+    const [salt, hash] = String(storedHash).split(':');
+    const expected = Buffer.from(hash, 'hex');
+    const actual = crypto.scryptSync(password, salt, expected.length);
+    return expected.length > 0 && actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+  } catch {
+    return false;
+  }
+}
+
+function persistUsers() {
+  fs.mkdirSync(path.dirname(usersFile), { recursive: true });
+  const temporaryFile = `${usersFile}.tmp`;
+  fs.writeFileSync(temporaryFile, JSON.stringify(users, null, 2));
+  fs.renameSync(temporaryFile, usersFile);
+}
+
+function loadUsers() {
+  try {
+    const stored = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+    users = Array.isArray(stored) ? stored : [];
+  } catch (error) {
+    if (error.code !== 'ENOENT') console.error(`[fresh] Không đọc được tài khoản: ${error.message}`);
+    users = [];
+  }
+  if (users.length === 0) {
+    users = defaultUsers.map((user, index) => ({
+      id: `user-${index + 1}`,
+      username: user.username,
+      name: user.name,
+      role: user.role,
+      passwordHash: hashPassword(user.password),
+      active: true,
+      createdAt: new Date().toISOString(),
+    }));
+    persistUsers();
+  }
+}
+
+function safeUser(user) {
+  if (!user) return null;
+  return { id: user.id, username: user.username, name: user.name, role: user.role, active: user.active !== false, createdAt: user.createdAt };
+}
+
+function cleanExpiredSessions() {
+  const now = Date.now();
+  for (const [token, session] of sessions) if (session.expiresAt <= now) sessions.delete(token);
+}
+
+function createSession(user) {
+  cleanExpiredSessions();
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, { userId: user.id, expiresAt: Date.now() + sessionTtlMs });
+  return token;
+}
+
+function sessionTokenFrom(request, url) {
+  const authorization = String(request.headers.authorization || '');
+  return authorization.startsWith('Bearer ') ? authorization.slice(7) : url.searchParams.get('session');
 }
 
 function persistState() {
@@ -74,6 +156,28 @@ function authorized(request, url, response) {
     return false;
   }
   return true;
+}
+
+function requireUser(request, url, response) {
+  if (!authorized(request, url, response)) return null;
+  cleanExpiredSessions();
+  const session = sessions.get(sessionTokenFrom(request, url));
+  const user = session ? users.find((candidate) => candidate.id === session.userId) : null;
+  if (!user || user.active === false) {
+    writeJson(response, 401, { ok: false, error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });
+    return null;
+  }
+  return user;
+}
+
+function requireRole(request, url, response, roles) {
+  const user = requireUser(request, url, response);
+  if (!user) return null;
+  if (roles && !roles.includes(user.role)) {
+    writeJson(response, 403, { ok: false, error: 'Tài khoản không có quyền thực hiện thao tác này.' });
+    return null;
+  }
+  return user;
 }
 
 function writeEvent(response, payload) {
@@ -165,13 +269,69 @@ async function handleRequest(request, response) {
     return writeJson(response, 200, { ok: true, service: 'fresh-server', revision, updatedAt, initialized: Boolean(sharedState), authConfigured: Boolean(accessToken) });
   }
 
-  if (pathname === '/api/state' && request.method === 'GET') {
+  if (pathname === '/api/auth/login' && request.method === 'POST') {
     if (!authorized(request, url, response)) return;
+    try {
+      const body = await readBody(request);
+      const username = String(body.username || '').trim().toLowerCase();
+      const password = String(body.password || '');
+      const user = users.find((candidate) => candidate.username.toLowerCase() === username);
+      if (!user || user.active === false || !verifyPassword(password, user.passwordHash)) return writeJson(response, 401, { ok: false, error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
+      return writeJson(response, 200, { ok: true, sessionToken: createSession(user), user: safeUser(user), expiresIn: sessionTtlMs });
+    } catch (error) {
+      return writeJson(response, 400, { ok: false, error: error.message });
+    }
+  }
+
+  if (pathname === '/api/auth/me' && request.method === 'GET') {
+    const user = requireUser(request, url, response);
+    if (!user) return;
+    return writeJson(response, 200, { ok: true, user: safeUser(user) });
+  }
+
+  if (pathname === '/api/auth/logout' && request.method === 'POST') {
+    const user = requireUser(request, url, response);
+    if (!user) return;
+    sessions.delete(sessionTokenFrom(request, url));
+    return writeJson(response, 200, { ok: true });
+  }
+
+  if (pathname === '/api/auth/users' && request.method === 'GET') {
+    const user = requireRole(request, url, response, ['manager']);
+    if (!user) return;
+    return writeJson(response, 200, { ok: true, users: users.map(safeUser) });
+  }
+
+  if (pathname === '/api/auth/users' && request.method === 'POST') {
+    const user = requireRole(request, url, response, ['manager']);
+    if (!user) return;
+    try {
+      const body = await readBody(request);
+      const username = String(body.username || '').trim().toLowerCase();
+      const name = String(body.name || '').trim();
+      const password = String(body.password || '');
+      const role = String(body.role || 'staff');
+      if (!/^[a-z0-9._-]{3,30}$/.test(username)) return writeJson(response, 400, { ok: false, error: 'Tên đăng nhập phải có 3–30 ký tự a-z, số, dấu chấm, gạch ngang hoặc gạch dưới.' });
+      if (!name || password.length < 6 || !rolePermissions[role]) return writeJson(response, 400, { ok: false, error: 'Vui lòng nhập đủ tên, mật khẩu tối thiểu 6 ký tự và vai trò hợp lệ.' });
+      if (users.some((candidate) => candidate.username.toLowerCase() === username)) return writeJson(response, 409, { ok: false, error: 'Tên đăng nhập đã tồn tại.' });
+      const newUser = { id: `user-${Date.now()}`, username, name, role, passwordHash: hashPassword(password), active: true, createdAt: new Date().toISOString() };
+      users = [...users, newUser];
+      persistUsers();
+      return writeJson(response, 201, { ok: true, user: safeUser(newUser) });
+    } catch (error) {
+      return writeJson(response, 400, { ok: false, error: error.message });
+    }
+  }
+
+  if (pathname === '/api/state' && request.method === 'GET') {
+    const user = requireUser(request, url, response);
+    if (!user) return;
     return writeJson(response, 200, { ok: true, ...statePayload() });
   }
 
   if (pathname === '/api/events' && request.method === 'GET') {
-    if (!authorized(request, url, response)) return;
+    const user = requireUser(request, url, response);
+    if (!user) return;
     response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive' });
     response.flushHeaders?.();
     eventClients.add(response);
@@ -182,10 +342,17 @@ async function handleRequest(request, response) {
   }
 
   if ((pathname === '/api/state' && (request.method === 'PUT' || request.method === 'PATCH'))) {
-    if (!authorized(request, url, response)) return;
+    const user = request.method === 'PUT' ? requireRole(request, url, response, ['manager']) : requireRole(request, url, response, ['manager', 'staff', 'kitchen']);
+    if (!user) return;
     try {
       const body = await readBody(request);
-      const payload = request.method === 'PUT' ? updateState(body.state) : applyChanges(body.changes);
+      if (request.method === 'PUT') return writeJson(response, 200, { ok: true, ...updateState(body.state) });
+      const changes = body.changes && typeof body.changes === 'object' ? body.changes : null;
+      if (!changes) return writeJson(response, 400, { ok: false, error: 'Dữ liệu đồng bộ không hợp lệ.' });
+      const allowedKeys = rolePermissions[user.role] || [];
+      const forbiddenKeys = Object.keys(changes).filter((key) => !allowedKeys.includes(key));
+      if (forbiddenKeys.length) return writeJson(response, 403, { ok: false, error: 'Tài khoản không có quyền cập nhật dữ liệu này.' });
+      const payload = applyChanges(changes);
       if (!payload) return writeJson(response, 400, { ok: false, error: 'Dữ liệu đồng bộ không hợp lệ.' });
       return writeJson(response, 200, { ok: true, ...payload });
     } catch (error) {
@@ -198,6 +365,7 @@ async function handleRequest(request, response) {
 }
 
 loadState();
+loadUsers();
 const server = http.createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
     console.error(`[fresh] ${error.stack || error.message}`);
@@ -209,6 +377,5 @@ const server = http.createServer((request, response) => {
 server.listen(port, host, () => {
   console.log(`[fresh] Máy chủ quản lý đang chạy tại http://localhost:${port}`);
   console.log(`[fresh] Xác thực LAN: ${accessToken ? 'đã bật' : 'chưa cấu hình — API đang khóa'}`);
-  console.log(`[fresh] Thiết bị gọi món: http://<IP-MAY-CHU>:${port}/?mode=staff`);
-  console.log(`[fresh] Màn hình bếp: http://<IP-MAY-CHU>:${port}/?mode=kitchen`);
+  console.log(`[fresh] Máy gọi món và máy bếp dùng cùng URL, màn hình được chọn theo tài khoản đăng nhập.`);
 });
