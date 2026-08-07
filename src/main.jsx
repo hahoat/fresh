@@ -115,6 +115,7 @@ const LEGACY_STORAGE_KEY = 'fresh-sales-manager:v1';
 const DEVICE_MODE_STORAGE_KEY = 'fresh-device-mode:v1';
 const BASE_TODAY_STATS = { revenue: 8450000, orders: 86 };
 const sharedStateKeys = ['products', 'orders', 'tables', 'inventory', 'staff'];
+const API_TOKEN_STORAGE_KEY = 'fresh-api-token:v1';
 const deviceModes = {
   manager: { label: 'Máy quản lý', initialView: 'overview' },
   staff: { label: 'Máy gọi món', initialView: 'tables' },
@@ -136,6 +137,24 @@ function stableJson(value) {
 function sharedStateFrom(products, orders, tables, inventory, staff) {
   return { products, orders, tables, inventory, staff };
 }
+
+function readApiToken() {
+  if (typeof window === 'undefined') return '';
+  const queryToken = new URLSearchParams(window.location.search).get('token');
+  if (queryToken) {
+    try { window.localStorage.setItem(API_TOKEN_STORAGE_KEY, queryToken); } catch { /* optional convenience */ }
+    return queryToken;
+  }
+  try { return import.meta.env.VITE_FRESH_ACCESS_TOKEN || window.localStorage.getItem(API_TOKEN_STORAGE_KEY) || ''; } catch { return ''; }
+}
+
+const API_TOKEN = readApiToken();
+const apiRequest = (url, options = {}) => {
+  const headers = new Headers(options.headers || {});
+  if (API_TOKEN) headers.set('X-Fresh-Token', API_TOKEN);
+  return fetch(url, { ...options, headers });
+};
+const apiEventsUrl = () => API_TOKEN ? `/api/events?token=${encodeURIComponent(API_TOKEN)}` : '/api/events';
 
 function readStoredState() {
   if (typeof window === 'undefined') return {};
@@ -538,7 +557,7 @@ function App() {
     }
     try {
       setSyncStatus('syncing');
-      const response = await fetch('/api/state', {
+      const response = await apiRequest('/api/state', {
         method: replace ? 'PUT' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(replace ? { state: current, deviceMode } : { changes, deviceMode }),
@@ -561,7 +580,7 @@ function App() {
     const connect = async () => {
       setSyncStatus('connecting');
       try {
-        const response = await fetch('/api/state', { headers: { Accept: 'application/json' } });
+        const response = await apiRequest('/api/state', { headers: { Accept: 'application/json' } });
         if (!response.ok) throw new Error('Máy chủ không phản hồi');
         const payload = await response.json();
         if (cancelled) return;
@@ -592,7 +611,7 @@ function App() {
 
   useEffect(() => {
     if (!serverAvailable) return undefined;
-    const events = new EventSource('/api/events');
+    const events = new EventSource(apiEventsUrl());
     events.onopen = () => setSyncStatus('online');
     events.addEventListener('state', (event) => {
       try {
