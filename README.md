@@ -12,6 +12,16 @@ Fresh là web quản lý nhà hàng/cửa hàng ăn vặt, giữ nguyên giao di
 
 ```bash
 npm install
+
+# Linux/macOS
+FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" VITE_FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" npm start
+```
+
+`FRESH_ACCESS_TOKEN` là bắt buộc để API nhận dữ liệu. Không commit mã này vào GitHub. Trên PowerShell có thể dùng:
+
+```powershell
+$env:FRESH_ACCESS_TOKEN = "dat-ma-truy-cap-rieng"
+$env:VITE_FRESH_ACCESS_TOKEN = $env:FRESH_ACCESS_TOKEN
 npm start
 ```
 
@@ -21,10 +31,10 @@ Nếu muốn phát triển giao diện riêng:
 
 ```bash
 # Terminal 1
-npm run api
+FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" npm run api
 
 # Terminal 2
-npm run dev
+VITE_FRESH_ACCESS_TOKEN="dat-ma-truy-cap-rieng" npm run dev
 ```
 
 ## Triển khai trên 3 máy
@@ -36,7 +46,7 @@ npm run dev
 5. Trên máy bếp mở `http://192.168.1.20:8787/?mode=kitchen`.
 6. Nếu máy khác không truy cập được, cho phép cổng TCP `8787` qua tường lửa của máy quản lý và kiểm tra 3 máy cùng mạng LAN.
 
-Chế độ thiết bị cũng có thể đổi bằng danh sách ở thanh trên cùng. Mỗi máy nhớ chế độ đã chọn. Có thể bấm trạng thái kết nối để thử kết nối lại máy chủ.
+Chế độ thiết bị cũng có thể đổi bằng danh sách ở thanh trên cùng. Mỗi máy nhớ chế độ đã chọn. Có thể bấm trạng thái kết nối để thử kết nối lại máy chủ. Khi không build token vào frontend, có thể truyền token ở URL một lần: `?mode=staff&token=dat-ma-truy-cap-rieng`.
 
 ## Đồng bộ dữ liệu
 
@@ -57,4 +67,4 @@ Chế độ thiết bị cũng có thể đổi bằng danh sách ở thanh trê
 
 ## Lưu ý
 
-Bản hiện tại dùng file JSON trên máy chủ nội bộ, phù hợp cho cửa hàng chạy trong một mạng LAN. Chế độ thiết bị là phân luồng giao diện; hệ thống chưa có đăng nhập tài khoản và phân quyền bảo mật theo từng nhân viên.
+Bản hiện tại dùng file JSON trên máy chủ nội bộ, phù hợp cho cửa hàng chạy trong một mạng LAN. API yêu cầu `FRESH_ACCESS_TOKEN`, không mở ghi dữ liệu công khai. Chế độ thiết bị là phân luồng giao diện; hệ thống chưa có đăng nhập tài khoản riêng và phân quyền chi tiết theo từng nhân viên.
