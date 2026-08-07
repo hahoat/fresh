@@ -1,6 +1,4 @@
-node_modules
-dist
-.DS_Store
-.env
-.env.*
-!.env.example
+node_modules/
+dist/
+data/fresh-data.json
+data/fresh-data.json.tmp
