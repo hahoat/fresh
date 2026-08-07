@@ -8,7 +8,11 @@
     "api": "node server.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "npm run build && node server.mjs"
+    "start": "npm run build && node server.mjs",
+    "cloudflare:dev": "npm run build && npx wrangler@latest dev",
+    "cloudflare:deploy": "npx wrangler@latest deploy",
+    "cloudflare:d1:local": "npx wrangler@latest d1 migrations apply fresh-db --local",
+    "cloudflare:d1:remote": "npx wrangler@latest d1 migrations apply fresh-db --remote"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
