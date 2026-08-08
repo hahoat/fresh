@@ -27,6 +27,45 @@ function normalizeState(value) {
   };
 }
 
+function isOrderClosed(order) {
+  return order?.status === 'Hoàn tất'
+    || order?.paymentStatus === 'paid'
+    || order?.kitchenCleared === true
+    || order?.kitchenStatus === 'Đã xong';
+}
+
+// Each device synchronizes a full local orders array. Merge it on the server
+// so an older kitchen/staff snapshot cannot reopen a completed order.
+function mergeOrders(currentOrders, incomingOrders) {
+  const current = Array.isArray(currentOrders) ? currentOrders : [];
+  const incoming = Array.isArray(incomingOrders) ? incomingOrders : [];
+  const currentById = new Map(current.filter((order) => order && order.id != null).map((order) => [String(order.id), order]));
+  const seen = new Set();
+  const merged = incoming.map((incomingOrder) => {
+    if (!incomingOrder || typeof incomingOrder !== 'object' || incomingOrder.id == null) return incomingOrder;
+    const id = String(incomingOrder.id);
+    seen.add(id);
+    const currentOrder = currentById.get(id);
+    if (!currentOrder) return incomingOrder;
+    if (isOrderClosed(currentOrder) && !isOrderClosed(incomingOrder)) return currentOrder;
+    return { ...currentOrder, ...incomingOrder };
+  });
+
+  // A stale device may not know about a newer order yet; never delete it via PATCH.
+  current.forEach((order) => {
+    if (order && order.id != null && !seen.has(String(order.id))) merged.push(order);
+  });
+  return merged;
+}
+
+function mergeStateChanges(currentState, changes) {
+  const nextState = { ...currentState };
+  Object.entries(changes || {}).forEach(([key, value]) => {
+    nextState[key] = key === 'orders' ? mergeOrders(currentState.orders, value) : value;
+  });
+  return nextState;
+}
+
 function jsonResponse(payload, status = 200, extraHeaders = {}) {
   const headers = new Headers({
     'Content-Type': 'application/json; charset=utf-8',
@@ -386,8 +425,7 @@ async function handleApi(request, env) {
     if (forbiddenKeys.length) return errorResponse('Tài khoản không có quyền cập nhật dữ liệu này.', 403);
     if (changedKeys.some((key) => !Array.isArray(changes[key]))) return errorResponse('Dữ liệu đồng bộ không hợp lệ.');
     const current = await getState(env.DB);
-    const nextState = { ...current.state };
-    for (const key of changedKeys) nextState[key] = changes[key];
+    const nextState = mergeStateChanges(current.state, changes);
     return jsonResponse({ ok: true, ...(await saveState(env.DB, nextState)) });
   }
 
