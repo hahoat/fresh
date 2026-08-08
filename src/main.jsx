@@ -876,18 +876,20 @@ function App({ user, onLogout }) {
   };
   const updateKitchenStage = (orderId, kitchenStatus) => {
     if (kitchenStatus !== 'Đang chế biến') return;
-    setOrders((current) => current.map((order) => order.id === orderId ? { ...order, kitchenStatus, kitchenCleared: false } : order));
+    const kitchenUpdatedAt = Date.now();
+    setOrders((current) => current.map((order) => order.id === orderId ? { ...order, kitchenStatus, kitchenCleared: false, kitchenUpdatedAt } : order));
     notify(`Đơn ${orderId} đã chuyển sang “${kitchenStatus}”`);
   };
   const updateKitchenItem = (orderId, itemId, done) => {
     const currentOrder = orders.find((order) => order.id === orderId);
     if (!currentOrder) return;
+    const kitchenUpdatedAt = Date.now();
     const nextOrders = orders.map((order) => {
       if (order.id !== orderId) return order;
       const itemDetails = kitchenItemsFor(order).map((item) => item.id === itemId ? { ...item, completedQuantity: done ? item.quantity : 0 } : item);
       const allDone = allKitchenItemsDone({ ...order, itemDetails });
       const started = itemDetails.some((item) => item.completedQuantity > 0);
-      return { ...order, itemDetails, kitchenStatus: allDone ? 'Đã xong' : started ? 'Đang chế biến' : 'Chờ chế biến', kitchenCleared: allDone };
+      return { ...order, itemDetails, kitchenStatus: allDone ? 'Đã xong' : started ? 'Đang chế biến' : 'Chờ chế biến', kitchenCleared: allDone, kitchenUpdatedAt };
     });
     const changedOrder = nextOrders.find((order) => order.id === orderId);
     const changedItem = kitchenItemsFor(changedOrder).find((item) => item.id === itemId);
