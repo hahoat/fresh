@@ -255,3 +255,8 @@ tbody tr:last-child td { border-bottom: 0; }
   .transfer-qr-image, .transfer-qr-image img { width: 100%; max-width: 100%; }
   .transfer-qr-copy { min-width: 0; overflow-wrap: anywhere; }
 }
+
+/* Cho phép thu gọn thực đơn lớn khi cần tập trung vào đơn đang gọi. */
+.menu-visibility-button { white-space: nowrap; }
+.sales-layout.menu-hidden { grid-template-columns: minmax(0, 1fr); }
+.sales-layout.menu-hidden > .quick-order-panel { width: min(100%, 720px); margin: 0 auto; }
