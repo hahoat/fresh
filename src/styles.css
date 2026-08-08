@@ -228,3 +228,12 @@ tbody tr:last-child td { border-bottom: 0; }
   .mobile-nav { display: flex; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }.mobile-nav::-webkit-scrollbar { display: none; }.mobile-nav-item { flex: 0 0 78px; }
   .table-snapshot { padding: 14px; }.table-summary-item { padding: 9px; }.table-summary-item strong { font-size: 16px; }.table-mini-list { grid-template-columns: 1fr; }.table-management { padding: 13px; }.table-management-head { display: block; }.table-search { width: 100%; margin-top: 13px; }.table-filters { display: block; }.table-filters .select-control { width: 100%; margin-top: 10px; }.tables-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }.table-card { padding: 10px; border-radius: 12px; }.table-card-icon { width: 45px; height: 45px; margin: 13px auto 10px; }.table-card-copy strong { font-size: 11px; }.table-card-copy span, .table-card-footer small, .table-card-footer > span { font-size: 8px; }.table-card-footer { display: block; margin-top: 12px; }.table-card-footer > span { display: flex; margin-top: 6px; }.sales-context-actions { align-items: flex-end; flex-direction: column; gap: 7px; }.table-context { padding: 7px 9px; font-size: 9px; }.kitchen-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }.kitchen-summary > div { padding: 10px; }.kitchen-summary > div strong { font-size: 17px; }.kitchen-summary > div span { font-size: 8px; line-height: 1.3; }.kitchen-search { grid-column: 1 / -1; }.kitchen-board { display: block; }.kitchen-column { min-height: 0; margin-top: 10px; }.kitchen-ticket p { min-height: 0; }.inventory-summary { gap: 8px; }.inventory-summary > div { padding: 11px; }.inventory-summary strong { font-size: 17px; }.inventory-summary span { font-size: 8px; }.inventory-note { margin-top: 10px; }.inventory-table { min-width: 760px; }.checkout-table-banner { margin-bottom: 13px; }
 }
+
+/* QR thanh toán bản lớn: 600px trên desktop, tự co trên màn hình nhỏ. */
+.checkout-modal { width: min(960px, calc(100vw - 30px)); }
+.transfer-qr-panel { grid-template-columns: 600px minmax(0, 1fr); }
+.transfer-qr-image { width: 600px; }
+@media (max-width: 800px) {
+  .transfer-qr-panel { grid-template-columns: 1fr; }
+  .transfer-qr-image { max-width: 100%; }
+}
