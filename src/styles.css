@@ -237,3 +237,10 @@ tbody tr:last-child td { border-bottom: 0; }
   .transfer-qr-panel { grid-template-columns: 1fr; }
   .transfer-qr-image { max-width: 100%; }
 }
+
+@media (max-width: 800px) {
+  .checkout-modal { width: calc(100vw - 20px); }
+  .transfer-qr-panel { width: 100%; justify-items: stretch; }
+  .transfer-qr-image { width: 100%; max-width: 600px; margin: 0 auto; }
+  .transfer-qr-copy { width: 100%; }
+}
