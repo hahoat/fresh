@@ -165,7 +165,8 @@ function readStoredState() {
 
 const toneForStatus = (status) => ({ 'Đang xử lý': 'pending', 'Hoàn tất': 'success', 'Đã hủy': 'cancelled' }[status] || 'pending');
 const tableToneForStatus = (status) => ({ Trống: 'success', 'Đang phục vụ': 'pending', 'Chờ thanh toán': 'warning', 'Đặt trước': 'reserved' }[status] || 'pending');
-const isOrderClosed = (order) => order?.status === 'Hoàn tất' || order?.paymentStatus === 'paid' || order?.kitchenCleared === true || order?.kitchenStatus === 'Đã xong';
+const normalizedOrderValue = (value) => String(value || '').trim().toLowerCase();
+const isOrderClosed = (order) => ['hoàn tất', 'đã xong'].includes(normalizedOrderValue(order?.status)) || normalizedOrderValue(order?.paymentStatus) === 'paid' || order?.kitchenCleared === true || normalizedOrderValue(order?.kitchenStatus) === 'đã xong';
 const kitchenStageFor = (order) => order.kitchenStatus || (isOrderClosed(order) ? 'Đã xong' : 'Chờ chế biến');
 const nextOrderId = (orders) => `#F-${Math.max(1048, ...orders.map((order) => Number(String(order.id || '').replace(/\D/g, '')) || 0)) + 1}`;
 
