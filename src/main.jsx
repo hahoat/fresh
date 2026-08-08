@@ -270,7 +270,22 @@ function MobileNav({ activeView, onNavigate, items = navItems }) {
   </nav>;
 }
 
-function Topbar({ title, globalSearch, onSearch, onMenu, onNotification, deviceMode, syncStatus, onReconnect, user, onLogout }) {
+function NotificationPanel({ notifications, onSelect, onClose }) {
+  return <section className="notification-panel" aria-label="Danh sách thông báo">
+    <div className="notification-panel-header">
+      <div><span>Hoạt động Fresh</span><h2>Thông báo</h2></div>
+      <button className="icon-button" onClick={onClose} aria-label="Đóng thông báo"><Icon name="close" size={18} /></button>
+    </div>
+    {notifications.length ? <div className="notification-list">{notifications.map((notification) => <button className="notification-item" key={notification.id} onClick={() => onSelect(notification)}>
+      <span className={`notification-item-icon ${notification.tone || ''}`}><Icon name={notification.icon || 'bell'} size={17} /></span>
+      <span className="notification-item-copy"><strong>{notification.title}</strong><span>{notification.message}</span><small>{notification.time}</small></span>
+      <Icon name="chevron" size={16} />
+    </button>)}</div> : <div className="notification-empty"><Icon name="bell" size={22} /><p>Chưa có thông báo mới</p></div>}
+    <div className="notification-panel-footer">{notifications.length ? `${notifications.length} thông báo cần xem` : 'Bạn đã xem hết thông báo'}</div>
+  </section>;
+}
+
+function Topbar({ title, globalSearch, onSearch, onMenu, onNotification, notifications = [], notificationOpen, onNotificationSelect, onNotificationClose, deviceMode, syncStatus, onReconnect, user, onLogout }) {
   const syncLabels = { connecting: 'Đang kết nối', syncing: 'Đang đồng bộ', online: 'Máy chủ live', offline: 'Chỉ máy này' };
   const initials = (user?.name || 'Fresh').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   return <header className="topbar">
@@ -280,9 +295,10 @@ function Topbar({ title, globalSearch, onSearch, onMenu, onNotification, deviceM
       <label className="global-search"><Icon name="search" size={18} /><input value={globalSearch} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm đơn, món, bàn..." /></label>
       <div className="account-chip"><div className="user-avatar">{initials}</div><span><strong>{user?.name || 'Fresh'}</strong><small>{roleLabels[user?.role] || deviceModes[deviceMode]?.label}</small></span></div>
       <button className={`sync-pill ${syncStatus}`} onClick={onReconnect} title="Bấm để kết nối lại máy chủ"><span /> {syncLabels[syncStatus] || syncLabels.offline}</button>
-      <button className="icon-button notification" onClick={onNotification} aria-label="Thông báo"><Icon name="bell" size={21} /><span>3</span></button>
+      <button className={`icon-button notification ${notificationOpen ? 'active' : ''}`} onClick={onNotification} aria-label="Thông báo" aria-expanded={notificationOpen}><Icon name="bell" size={21} />{notifications.length > 0 && <span>{notifications.length > 9 ? '9+' : notifications.length}</span>}</button>
       <button className="logout-button" onClick={onLogout}>Đăng xuất</button>
     </div>
+    {notificationOpen && <NotificationPanel notifications={notifications} onSelect={onNotificationSelect} onClose={onNotificationClose} />}
   </header>;
 }
 
@@ -622,6 +638,7 @@ function App({ user, onLogout }) {
   const [staffModal, setStaffModal] = useState({ open: false, staff: null });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState('connecting');
@@ -640,6 +657,38 @@ function App({ user, onLogout }) {
     return orders.filter((order) => (order.tableId === activeTable.id || order.table === activeTable.name) && order.paymentStatus !== 'paid' && order.status !== 'Đã hủy');
   }, [orders, activeTable]);
   const activeTableTotal = activeTableOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const notifications = useMemo(() => {
+    const targetView = deviceMode === 'manager' ? 'orders' : deviceMode === 'kitchen' ? 'kitchen' : 'tables';
+    const orderNotifications = orders.slice(0, 8).map((order) => {
+      const normalizedStatus = normalizedOrderValue(order.status);
+      const done = allKitchenItemsDone(order) || normalizedOrderValue(order.kitchenStatus) === 'đã xong';
+      let title = `Đơn mới ${order.id}`;
+      let icon = 'clipboard';
+      let tone = 'pending';
+      if (normalizedStatus === 'đã hủy') {
+        title = `${order.id} đã bị hủy`;
+        icon = 'close';
+        tone = 'cancelled';
+      } else if (isPaidOrder(order)) {
+        title = `Đã thanh toán ${order.id}`;
+        icon = 'dollar';
+        tone = 'success';
+      } else if (done) {
+        title = `${order.table || 'Đơn mang đi'} đã xong món`;
+        icon = 'chef';
+        tone = 'success';
+      } else if (order.orderType === 'additional') {
+        title = `${order.table || 'Bàn'} gọi thêm món`;
+        icon = 'plus';
+        tone = 'warning';
+      }
+      return { id: `notification-order-${order.id}`, title, message: `${order.table || 'Mang đi'} · ${order.items || 'Có món mới cần xử lý'}`, time: order.paidAt || order.time || 'Vừa cập nhật', view: targetView, icon, tone };
+    });
+    const inventoryNotifications = deviceMode === 'manager'
+      ? inventory.filter((item) => Number(item.stock) <= Number(item.minStock)).slice(0, 4).map((item) => ({ id: `notification-inventory-${item.id}`, title: `Sắp hết ${item.name}`, message: `Còn ${item.stock} ${item.unit} · Mức tối thiểu ${item.minStock} ${item.unit}`, time: 'Cần kiểm tra', view: 'inventory', icon: 'warehouse', tone: 'warning' }))
+      : [];
+    return [...orderNotifications, ...inventoryNotifications].slice(0, 8);
+  }, [orders, inventory, deviceMode]);
 
   sharedStateRef.current = sharedState;
 
@@ -786,6 +835,7 @@ function App({ user, onLogout }) {
   const navigate = (view) => {
     const isInternalOrderView = view === 'sales';
     if (!isInternalOrderView && !visibleNavItems.some((item) => item.id === view)) return;
+    setNotificationOpen(false);
     setActiveView(view);
     setGlobalSearch('');
   };
@@ -795,6 +845,10 @@ function App({ user, onLogout }) {
     setConnectionAttempt((current) => current + 1);
   };
   const notify = (message) => { setToast(message); window.setTimeout(() => setToast(''), 3200); };
+  const handleNotificationSelect = (notification) => {
+    setNotificationOpen(false);
+    if (notification?.view) navigate(notification.view);
+  };
   const selectTable = (table) => {
     const isTakeaway = !table.id;
     setActiveTable(isTakeaway ? { id: null, name: 'Mang đi', seats: 0, status: 'Trống' } : table);
@@ -988,7 +1042,7 @@ function App({ user, onLogout }) {
   if (activeView === 'orders') content = <OrdersPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectOrder={setSelectedOrder} onExport={exportOrders} />;
   if (activeView === 'reports') content = <ReportsPage stats={stats} products={products} orders={orders} />;
 
-  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} items={visibleNavItems} user={user} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => notify('Bạn có 3 thông báo cần xem')} deviceMode={deviceMode} syncStatus={syncStatus} onReconnect={reconnectServer} user={user} onLogout={onLogout} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} items={visibleNavItems} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} items={visibleNavItems} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{accountModalOpen && <AccountFormModal onClose={() => setAccountModalOpen(false)} onSave={saveAccount} />}{checkoutOpen && <CheckoutModal paymentOrders={activeTableOrders} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completePayment} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
+  return <div className="app-shell"><Sidebar activeView={activeView} onNavigate={navigate} items={visibleNavItems} user={user} /><main className="main-shell"><Topbar title={pageTitles[activeView]} globalSearch={globalSearch} onSearch={setGlobalSearch} onMenu={() => setMenuOpen(true)} onNotification={() => setNotificationOpen((current) => !current)} notifications={notifications} notificationOpen={notificationOpen} onNotificationSelect={handleNotificationSelect} onNotificationClose={() => setNotificationOpen(false)} deviceMode={deviceMode} syncStatus={syncStatus} onReconnect={reconnectServer} user={user} onLogout={onLogout} /><div className="content-scroll">{content}</div></main><MobileNav activeView={activeView} onNavigate={navigate} items={visibleNavItems} /><MobileMenuSheet open={menuOpen} activeView={activeView} onNavigate={navigate} onClose={() => setMenuOpen(false)} items={visibleNavItems} /><OrderDetail order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={updateOrderStatus} onPrint={() => { window.print(); }} />{productModal.open && <ProductFormModal product={productModal.product} onClose={() => setProductModal({ open: false, product: null })} onSave={saveProduct} />}{staffModal.open && <StaffFormModal staff={staffModal.staff} onClose={() => setStaffModal({ open: false, staff: null })} onSave={saveStaff} />}{accountModalOpen && <AccountFormModal onClose={() => setAccountModalOpen(false)} onSave={saveAccount} />}{checkoutOpen && <CheckoutModal paymentOrders={activeTableOrders} activeTable={activeTable} onClose={() => setCheckoutOpen(false)} onConfirm={completePayment} />}{toast && <div className="toast"><span className="toast-check"><Icon name="check" size={16} /></span>{toast}</div>}</div>;
 }
 
 createRoot(document.getElementById('root')).render(<AuthGate />);
