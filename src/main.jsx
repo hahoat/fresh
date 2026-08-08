@@ -196,13 +196,11 @@ const allKitchenItemsDone = (order) => {
   const items = kitchenItemsFor(order);
   return items.length > 0 && items.every((item) => item.completedQuantity >= item.quantity);
 };
-const kitchenItemsStarted = (order) => kitchenItemsFor(order).some((item) => item.completedQuantity > 0);
 const isOrderClosed = (order) => ['hoàn tất', 'đã xong'].includes(normalizedOrderValue(order?.status)) || normalizedOrderValue(order?.paymentStatus) === 'paid' || order?.kitchenCleared === true || normalizedOrderValue(order?.kitchenStatus) === 'đã xong';
 const isKitchenArchived = (order) => ['hoàn tất', 'đã hủy'].includes(normalizedOrderValue(order?.status)) || normalizedOrderValue(order?.paymentStatus) === 'paid';
 const kitchenStageFor = (order) => {
   if (isOrderClosed(order)) return 'Đã xong';
-  if (order.kitchenStatus === 'Đang chế biến' || kitchenItemsStarted(order)) return 'Đang chế biến';
-  return 'Chờ chế biến';
+  return 'Đang chế biến';
 };
 const nextOrderId = (orders) => `#F-${Math.max(1048, ...orders.map((order) => Number(String(order.id || '').replace(/\D/g, '')) || 0)) + 1}`;
 
@@ -427,9 +425,9 @@ function TablesPage({ tables, searchValue, onSearch, onSelectTable }) {
   return <div className="page-content"><div className="page-intro"><div><h2>Quản lý bàn</h2><p>Sơ đồ bàn và trạng thái phục vụ theo từng khu vực.</p></div><button className="primary-button" onClick={() => onSelectTable({ id: null, name: 'Mang đi', status: 'Trống' })}><Icon name="plus" size={18} /> Tạo đơn mang đi</button></div><section className="table-management"><div className="table-management-head"><div><h3>Sơ đồ nhà hàng</h3><p>{filteredTables.length} / {tables.length} bàn đang hiển thị</p></div><label className="local-search table-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm bàn hoặc khu vực..." /></label></div><div className="table-filters"><div className="filter-tabs">{['Tất cả', 'Trống', 'Đang phục vụ', 'Chờ thanh toán', 'Đặt trước'].map((item) => <button key={item} className={status === item ? 'active' : ''} onClick={() => setStatus(item)}>{item}<span>{item === 'Tất cả' ? tables.length : tables.filter((table) => table.status === item).length}</span></button>)}</div><select className="select-control" value={zone} onChange={(event) => setZone(event.target.value)} aria-label="Lọc khu vực">{zones.map((item) => <option key={item}>{item}</option>)}</select></div><div className="tables-grid">{filteredTables.map((table) => <TableCard key={table.id} table={table} onSelect={onSelectTable} />)}</div>{filteredTables.length === 0 && <div className="empty-state table-empty"><Icon name="search" size={22} /><p>Không tìm thấy bàn phù hợp</p></div>}</section></div>;
 }
 
-const kitchenStages = ['Chờ chế biến', 'Đang chế biến', 'Đã xong'];
+const kitchenStages = ['Đang chế biến', 'Đã xong'];
 
-function KitchenTicket({ order, onStageChange, onItemToggle, onSelectOrder }) {
+function KitchenTicket({ order, onItemToggle, onSelectOrder }) {
   const stage = kitchenStageFor(order);
   const items = kitchenItemsFor(order);
   const completedCount = items.filter((item) => item.completedQuantity >= item.quantity).length;
@@ -443,14 +441,14 @@ function KitchenTicket({ order, onStageChange, onItemToggle, onSelectOrder }) {
         return <li key={item.id}><button type="button" className={`kitchen-item-toggle ${isDone ? 'is-done' : ''}`} onClick={() => onItemToggle(order.id, item.id, !isDone)} aria-pressed={isDone} aria-label={`${isDone ? 'Mở lại' : 'Đánh dấu xong'} ${item.quantity}x ${item.name}`}><span className="kitchen-item-check">{isDone && <Icon name="check" size={13} />}</span><span className="kitchen-item-copy"><strong>{item.quantity}x {item.name}</strong><small>{isDone ? 'Đã xong' : 'Chưa xong'}</small></span></button></li>;
       })}
     </ul>
-    <div className="kitchen-ticket-foot">{stage === 'Chờ chế biến' ? <button className="primary-button" onClick={() => onStageChange(order.id, 'Đang chế biến')}>Bắt đầu chế biến <Icon name="arrow" size={14} /></button> : <span className="kitchen-progress-note">Đã xong {completedCount}/{items.length} món</span>}<button className="icon-button small-icon" onClick={() => onSelectOrder(order)} aria-label={`Xem ${order.id}`}><Icon name="chevron" size={17} /></button></div>
+    <div className="kitchen-ticket-foot"><span className="kitchen-progress-note">{stage === 'Đã xong' ? 'Đã xong' : 'Đang chế biến'} · {completedCount}/{items.length} món</span><button className="icon-button small-icon" onClick={() => onSelectOrder(order)} aria-label={`Xem ${order.id}`}><Icon name="chevron" size={17} /></button></div>
   </article>;
 }
 
-function KitchenPage({ orders, searchValue, onSearch, onStageChange, onItemToggle, onSelectOrder }) {
+function KitchenPage({ orders, searchValue, onSearch, onItemToggle, onSelectOrder }) {
   const query = searchValue.trim().toLowerCase();
   const kitchenOrders = orders.filter((order) => !isKitchenArchived(order) && (!query || `${order.id} ${order.customer} ${order.table || ''} ${order.items}`.toLowerCase().includes(query)));
-  return <div className="page-content"><div className="page-intro"><div><h2>Màn hình bếp</h2><p>Nhận món, chế biến và cập nhật trạng thái phục vụ theo thời gian thực.</p></div><span className="live-status"><span /> Bếp đang hoạt động</span></div><div className="kitchen-summary"><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Chờ chế biến').length}</strong><span>Chờ chế biến</span></div><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đang chế biến').length}</strong><span>Đang chế biến</span></div><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đã xong').length}</strong><span>Đã xong</span></div><label className="local-search kitchen-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm mã đơn, bàn..." /></label></div><div className="kitchen-board">{kitchenStages.map((stage) => <section className={`kitchen-column ${stage === 'Đang chế biến' ? 'in-progress' : ''}`} key={stage}><div className="kitchen-column-head"><h3>{stage}</h3><span>{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length}</span></div><div className="kitchen-ticket-list">{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).map((order) => <KitchenTicket key={order.id} order={order} onStageChange={onStageChange} onItemToggle={onItemToggle} onSelectOrder={onSelectOrder} />)}{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length === 0 && <div className="kitchen-empty"><Icon name="chef" size={22} /><span>Chưa có món</span></div>}</div></section>)}</div></div>;
+  return <div className="page-content"><div className="page-intro"><div><h2>Màn hình bếp</h2><p>Nhận món, chế biến và cập nhật trạng thái phục vụ theo thời gian thực.</p></div><span className="live-status"><span /> Bếp đang hoạt động</span></div><div className="kitchen-summary"><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đang chế biến').length}</strong><span>Đang chế biến</span></div><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đã xong').length}</strong><span>Đã xong</span></div><label className="local-search kitchen-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm mã đơn, bàn..." /></label></div><div className="kitchen-board">{kitchenStages.map((stage) => <section className={`kitchen-column ${stage === 'Đang chế biến' ? 'in-progress' : ''}`} key={stage}><div className="kitchen-column-head"><h3>{stage}</h3><span>{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length}</span></div><div className="kitchen-ticket-list">{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).map((order) => <KitchenTicket key={order.id} order={order} onItemToggle={onItemToggle} onSelectOrder={onSelectOrder} />)}{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length === 0 && <div className="kitchen-empty"><Icon name="chef" size={22} /><span>Chưa có món</span></div>}</div></section>)}</div></div>;
 }
 
 function InventoryPage({ inventory, searchValue, onSearch, onRestock }) {
@@ -825,7 +823,7 @@ function App({ user, onLogout }) {
     const orderTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const orderId = nextOrderId(orders);
     const itemDetails = items.map((item) => ({ id: `${orderId}-item-${item.id}`, productId: item.id, name: item.name, quantity: basket[item.id], completedQuantity: 0 }));
-    const newOrder = { id: orderId, customer: activeTable?.id ? 'Khách tại bàn' : 'Khách tại quầy', table: activeTable?.name || 'Mang đi', tableId: activeTable?.id || null, items: itemDetails.map((item) => `${item.quantity}x ${item.name}`).join(', '), itemDetails, total, paymentStatus: 'unpaid', orderType: isAdditional ? 'additional' : 'new', status: 'Đang xử lý', kitchenStatus: 'Chờ chế biến', time: orderTime, tone: 'pending' };
+    const newOrder = { id: orderId, customer: activeTable?.id ? 'Khách tại bàn' : 'Khách tại quầy', table: activeTable?.name || 'Mang đi', tableId: activeTable?.id || null, items: itemDetails.map((item) => `${item.quantity}x ${item.name}`).join(', '), itemDetails, total, paymentStatus: 'unpaid', orderType: isAdditional ? 'additional' : 'new', status: 'Đang xử lý', kitchenStatus: 'Đang chế biến', time: orderTime, tone: 'pending' };
     setOrders((current) => [newOrder, ...current]);
     setProducts((current) => current.map((product) => {
       const quantity = basket[product.id] || 0;
@@ -875,12 +873,6 @@ function App({ user, onLogout }) {
     setSelectedOrder((current) => current?.id === orderId ? { ...current, status, tone: toneForStatus(status), kitchenCleared: status === 'Hoàn tất' ? true : current.kitchenCleared } : current);
     notify(`Đơn ${orderId} đã chuyển sang “${status}”`);
   };
-  const updateKitchenStage = (orderId, kitchenStatus) => {
-    if (kitchenStatus !== 'Đang chế biến') return;
-    const kitchenUpdatedAt = Date.now();
-    setOrders((current) => current.map((order) => order.id === orderId ? { ...order, kitchenStatus, kitchenCleared: false, kitchenUpdatedAt } : order));
-    notify(`Đơn ${orderId} đã chuyển sang “${kitchenStatus}”`);
-  };
   const updateKitchenItem = (orderId, itemId, done) => {
     const currentOrder = orders.find((order) => order.id === orderId);
     if (!currentOrder) return;
@@ -889,8 +881,7 @@ function App({ user, onLogout }) {
       if (order.id !== orderId) return order;
       const itemDetails = kitchenItemsFor(order).map((item) => item.id === itemId ? { ...item, completedQuantity: done ? item.quantity : 0 } : item);
       const allDone = allKitchenItemsDone({ ...order, itemDetails });
-      const started = itemDetails.some((item) => item.completedQuantity > 0);
-      return { ...order, itemDetails, kitchenStatus: allDone ? 'Đã xong' : started ? 'Đang chế biến' : 'Chờ chế biến', kitchenCleared: allDone, kitchenUpdatedAt };
+      return { ...order, itemDetails, kitchenStatus: allDone ? 'Đã xong' : 'Đang chế biến', kitchenCleared: allDone, kitchenUpdatedAt };
     });
     const changedOrder = nextOrders.find((order) => order.id === orderId);
     const changedItem = kitchenItemsFor(changedOrder).find((item) => item.id === itemId);
@@ -975,7 +966,7 @@ function App({ user, onLogout }) {
   if (activeView === 'overview') content = <Overview products={products} orders={orders} tables={tables} stats={stats} basket={basket} onQuantityChange={changeQuantity} onConfirmOrder={confirmOrder} onNavigate={navigate} onSelectOrder={setSelectedOrder} />;
   if (activeView === 'tables') content = <TablesPage tables={tables} searchValue={globalSearch} onSearch={setGlobalSearch} onSelectTable={selectTable} />;
   if (activeView === 'sales') content = <SalesPage products={products} basket={basket} activeTable={activeTable} onQuantityChange={changeQuantity} onConfirmOrder={confirmOrder} onPayment={openPayment} canPay={Boolean(activeTable?.id && activeTableOrders.length)} paymentTotal={activeTableTotal} onNavigate={navigate} />;
-  if (activeView === 'kitchen') content = <KitchenPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onStageChange={updateKitchenStage} onItemToggle={updateKitchenItem} onSelectOrder={setSelectedOrder} />;
+  if (activeView === 'kitchen') content = <KitchenPage orders={orders} searchValue={globalSearch} onSearch={setGlobalSearch} onItemToggle={updateKitchenItem} onSelectOrder={setSelectedOrder} />;
   if (activeView === 'products') content = <ProductsPage products={products} searchValue={globalSearch} onSearch={setGlobalSearch} onCreateProduct={() => setProductModal({ open: true, product: null })} onEditProduct={(product) => setProductModal({ open: true, product })} onDeleteProduct={deleteProduct} />;
   if (activeView === 'staff') content = <StaffPage staff={staff} accounts={accounts} searchValue={globalSearch} onSearch={setGlobalSearch} onCreate={() => setStaffModal({ open: true, staff: null })} onCreateAccount={() => setAccountModalOpen(true)} onEdit={(person) => setStaffModal({ open: true, staff: person })} onToggle={toggleStaff} onDelete={deleteStaff} onResetData={resetOperationalData} />;
   if (activeView === 'inventory') content = <InventoryPage inventory={inventory} searchValue={globalSearch} onSearch={setGlobalSearch} onRestock={restockInventory} />;
