@@ -244,3 +244,14 @@ tbody tr:last-child td { border-bottom: 0; }
   .transfer-qr-image { width: 100%; max-width: 600px; margin: 0 auto; }
   .transfer-qr-copy { width: 100%; }
 }
+
+/* Bảo đảm QR luôn nằm gọn trong khung nhìn, kể cả thiết bị rất hẹp. */
+.checkout-modal, .transfer-qr-panel, .transfer-qr-image, .transfer-qr-image img { box-sizing: border-box; max-width: 100%; }
+.transfer-qr-panel { min-width: 0; overflow: hidden; }
+@media (max-width: 800px) {
+  .modal-backdrop { overflow-x: hidden; padding: 8px; }
+  .checkout-modal { width: 100%; max-width: 100%; padding: 16px; overflow-x: hidden; }
+  .transfer-qr-panel { width: 100%; max-width: 100%; }
+  .transfer-qr-image, .transfer-qr-image img { width: 100%; max-width: 100%; }
+  .transfer-qr-copy { min-width: 0; overflow-wrap: anywhere; }
+}
