@@ -97,6 +97,7 @@ const BASE_TODAY_STATS = { revenue: 0, orders: 0 };
 const sharedStateKeys = ['products', 'orders', 'tables', 'inventory', 'staff'];
 const API_TOKEN_STORAGE_KEY = 'fresh-api-token:v1';
 const SESSION_STORAGE_KEY = 'fresh-session:v1';
+const LOGIN_CREDENTIALS_STORAGE_KEY = 'fresh-login-credentials:v1';
 const roleLabels = { manager: 'Quản lý', staff: 'Nhân viên gọi món', kitchen: 'Bếp' };
 const deviceModes = {
   manager: { label: 'Máy quản lý', initialView: 'overview' },
@@ -129,6 +130,20 @@ function readApiToken() {
 const API_TOKEN = readApiToken();
 const getSessionToken = () => {
   try { return window.localStorage.getItem(SESSION_STORAGE_KEY) || ''; } catch { return ''; }
+};
+const readRememberedLogin = () => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(LOGIN_CREDENTIALS_STORAGE_KEY) || '{}');
+    return { username: typeof saved.username === 'string' ? saved.username : '', password: typeof saved.password === 'string' ? saved.password : '' };
+  } catch {
+    return { username: '', password: '' };
+  }
+};
+const saveRememberedLogin = ({ username, password }) => {
+  try { window.localStorage.setItem(LOGIN_CREDENTIALS_STORAGE_KEY, JSON.stringify({ username, password })); } catch { /* optional convenience */ }
+};
+const clearRememberedLogin = () => {
+  try { window.localStorage.removeItem(LOGIN_CREDENTIALS_STORAGE_KEY); } catch { /* optional convenience */ }
 };
 const apiRequest = (url, options = {}) => {
   const headers = new Headers(options.headers || {});
@@ -572,10 +587,12 @@ function OrderDetail({ order, onClose, onStatusChange, onPrint }) {
 }
 
 function LoginPage({ onLogin, error, loading }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const submit = (event) => { event.preventDefault(); onLogin({ username, password }); };
-  return <main className="auth-page"><section className="auth-card"><FreshMark /><div className="auth-heading"><span>Hệ thống quản lý nhà hàng</span><h1>Đăng nhập Fresh</h1><p>Đăng nhập theo vị trí làm việc để mở đúng màn hình.</p></div><form className="auth-form" onSubmit={submit}><label><span>Tên đăng nhập</span><input value={username} onChange={(event) => setUsername(event.target.value)} autoFocus placeholder="Nhập tên đăng nhập" /></label><label><span>Mật khẩu</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Nhập mật khẩu" /></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button full-button" type="submit" disabled={loading || !username.trim() || !password}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</button></form><div className="default-accounts"><strong>Tài khoản mặc định</strong><span><b>admin</b> / admin123 · Quản lý</span><span><b>phucvu</b> / phucvu123 · Gọi món</span><span><b>bep</b> / bep12345 · Bếp</span></div></section></main>;
+  const rememberedLogin = useMemo(readRememberedLogin, []);
+  const [username, setUsername] = useState(rememberedLogin.username);
+  const [password, setPassword] = useState(rememberedLogin.password);
+  const [rememberLogin, setRememberLogin] = useState(Boolean(rememberedLogin.username && rememberedLogin.password));
+  const submit = (event) => { event.preventDefault(); onLogin({ username, password, rememberLogin }); };
+  return <main className="auth-page"><section className="auth-card"><FreshMark /><div className="auth-heading"><span>Hệ thống quản lý nhà hàng</span><h1>Đăng nhập Fresh</h1><p>Đăng nhập theo vị trí làm việc để mở đúng màn hình.</p></div><form className="auth-form" onSubmit={submit}><label><span>Tên đăng nhập</span><input value={username} onChange={(event) => setUsername(event.target.value)} autoFocus autoComplete="username" placeholder="Nhập tên đăng nhập" /></label><label><span>Mật khẩu</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Nhập mật khẩu" /></label><label className="auth-remember"><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><span>Ghi nhớ tài khoản và mật khẩu trên máy này</span></label>{error && <div className="auth-error">{error}</div>}<button className="primary-button full-button" type="submit" disabled={loading || !username.trim() || !password}>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</button></form><div className="default-accounts"><strong>Tài khoản mặc định</strong><span><b>admin</b> / admin123 · Quản lý</span><span><b>phucvu</b> / phucvu123 · Gọi món</span><span><b>bep</b> / bep12345 · Bếp</span></div></section></main>;
 }
 
 function AuthGate() {
@@ -594,7 +611,7 @@ function AuthGate() {
     }).finally(() => setLoading(false));
   }, []);
 
-  const login = async ({ username, password }) => {
+  const login = async ({ username, password, rememberLogin }) => {
     setLoginLoading(true);
     setError('');
     try {
@@ -602,6 +619,8 @@ function AuthGate() {
       const payload = await readApiJson(response);
       if (!response.ok) throw new Error(payload.error || 'Không thể đăng nhập.');
       if (payload.sessionToken) window.localStorage.setItem(SESSION_STORAGE_KEY, payload.sessionToken);
+      if (rememberLogin) saveRememberedLogin({ username: username.trim(), password });
+      else clearRememberedLogin();
       setUser(payload.user);
     } catch (loginError) {
       setError(displayApiError(loginError, 'Không thể đăng nhập.'));
