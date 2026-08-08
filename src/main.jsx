@@ -399,7 +399,7 @@ function KitchenTicket({ order, onStageChange, onSelectOrder }) {
 
 function KitchenPage({ orders, searchValue, onSearch, onStageChange, onSelectOrder }) {
   const query = searchValue.trim().toLowerCase();
-  const kitchenOrders = orders.filter((order) => order.status !== 'Đã hủy' && (!query || `${order.id} ${order.customer} ${order.table || ''} ${order.items}`.toLowerCase().includes(query)));
+  const kitchenOrders = orders.filter((order) => order.status !== 'Đã hủy' && order.status !== 'Hoàn tất' && !order.kitchenCleared && kitchenStageFor(order) !== 'Đã xong' && (!query || `${order.id} ${order.customer} ${order.table || ''} ${order.items}`.toLowerCase().includes(query)));
   return <div className="page-content"><div className="page-intro"><div><h2>Màn hình bếp</h2><p>Nhận món, chế biến và cập nhật trạng thái phục vụ theo thời gian thực.</p></div><span className="live-status"><span /> Bếp đang hoạt động</span></div><div className="kitchen-summary"><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Chờ chế biến').length}</strong><span>Chờ chế biến</span></div><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đang chế biến').length}</strong><span>Đang chế biến</span></div><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đã xong').length}</strong><span>Đã xong</span></div><label className="local-search kitchen-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm mã đơn, bàn..." /></label></div><div className="kitchen-board">{kitchenStages.map((stage) => <section className={`kitchen-column ${stage === 'Đang chế biến' ? 'in-progress' : ''}`} key={stage}><div className="kitchen-column-head"><h3>{stage}</h3><span>{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length}</span></div><div className="kitchen-ticket-list">{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).map((order) => <KitchenTicket key={order.id} order={order} onStageChange={onStageChange} onSelectOrder={onSelectOrder} />)}{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length === 0 && <div className="kitchen-empty"><Icon name="chef" size={22} /><span>Chưa có món</span></div>}</div></section>)}</div></div>;
 }
 
@@ -799,7 +799,7 @@ function App({ user, onLogout }) {
     if (!activeTable?.id || !activeTableOrders.length) return;
     const payableIds = new Set(activeTableOrders.map((order) => order.id));
     const paidAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    setOrders((current) => current.map((order) => payableIds.has(order.id) ? { ...order, status: 'Hoàn tất', tone: 'success', paymentStatus: 'paid', payment, note, paidAt } : order));
+    setOrders((current) => current.map((order) => payableIds.has(order.id) ? { ...order, status: 'Hoàn tất', tone: 'success', paymentStatus: 'paid', payment, note, paidAt, kitchenCleared: true } : order));
     setTables((current) => current.map((table) => table.id === activeTable.id ? { ...table, status: 'Trống', orderId: null, total: 0, since: null } : table));
     setCheckoutOpen(false);
     setActiveTable(null);
@@ -819,16 +819,16 @@ function App({ user, onLogout }) {
     notify(`Đã xóa ${product.name}`);
   };
   const updateOrderStatus = (orderId, status) => {
-    setOrders((current) => current.map((order) => order.id === orderId ? { ...order, status, tone: toneForStatus(status) } : order));
-    setSelectedOrder((current) => current?.id === orderId ? { ...current, status, tone: toneForStatus(status) } : current);
+    setOrders((current) => current.map((order) => order.id === orderId ? { ...order, status, tone: toneForStatus(status), kitchenCleared: status === 'Hoàn tất' ? true : order.kitchenCleared } : order));
+    setSelectedOrder((current) => current?.id === orderId ? { ...current, status, tone: toneForStatus(status), kitchenCleared: status === 'Hoàn tất' ? true : current.kitchenCleared } : current);
     notify(`Đơn ${orderId} đã chuyển sang “${status}”`);
   };
   const updateKitchenStage = (orderId, kitchenStatus) => {
-    setOrders((current) => current.map((order) => order.id === orderId ? { ...order, kitchenStatus } : order));
+    setOrders((current) => current.map((order) => order.id === orderId ? { ...order, kitchenStatus, kitchenCleared: kitchenStatus === 'Đã xong' ? true : order.kitchenCleared } : order));
     if (kitchenStatus === 'Đã xong') {
       setTables((current) => current.map((table) => table.orderId === orderId ? { ...table, status: 'Chờ thanh toán' } : table));
     }
-    notify(`Đơn ${orderId} đã chuyển sang “${kitchenStatus}”`);
+    notify(kitchenStatus === 'Đã xong' ? `Đơn ${orderId} đã hoàn tất; món đã xóa khỏi màn hình bếp` : `Đơn ${orderId} đã chuyển sang “${kitchenStatus}”`);
   };
   const restockInventory = (item) => {
     const refillAmount = Math.max(item.minStock, 5);
