@@ -287,3 +287,7 @@ tbody tr:last-child td { border-bottom: 0; }
 @media (max-width: 800px) {
   .notification-panel { top: calc(100% + 7px); right: 10px; width: min(360px, calc(100vw - 20px)); }
 }
+
+.auth-remember { display: flex !important; align-items: center; gap: 8px !important; margin-top: -3px; }
+.auth-form .auth-remember input[type="checkbox"] { width: 16px; height: 16px; min-height: 16px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 4px; accent-color: var(--green); }
+.auth-form .auth-remember span { color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.4; }
