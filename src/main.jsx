@@ -165,7 +165,8 @@ function readStoredState() {
 
 const toneForStatus = (status) => ({ 'Đang xử lý': 'pending', 'Hoàn tất': 'success', 'Đã hủy': 'cancelled' }[status] || 'pending');
 const tableToneForStatus = (status) => ({ Trống: 'success', 'Đang phục vụ': 'pending', 'Chờ thanh toán': 'warning', 'Đặt trước': 'reserved' }[status] || 'pending');
-const kitchenStageFor = (order) => order.kitchenStatus || (order.status === 'Hoàn tất' ? 'Đã xong' : 'Chờ chế biến');
+const isOrderClosed = (order) => order?.status === 'Hoàn tất' || order?.paymentStatus === 'paid' || order?.kitchenCleared === true || order?.kitchenStatus === 'Đã xong';
+const kitchenStageFor = (order) => order.kitchenStatus || (isOrderClosed(order) ? 'Đã xong' : 'Chờ chế biến');
 const nextOrderId = (orders) => `#F-${Math.max(1048, ...orders.map((order) => Number(String(order.id || '').replace(/\D/g, '')) || 0)) + 1}`;
 
 function Icon({ name, size = 20, strokeWidth = 1.8 }) {
@@ -399,7 +400,7 @@ function KitchenTicket({ order, onStageChange, onSelectOrder }) {
 
 function KitchenPage({ orders, searchValue, onSearch, onStageChange, onSelectOrder }) {
   const query = searchValue.trim().toLowerCase();
-  const kitchenOrders = orders.filter((order) => order.status !== 'Đã hủy' && order.status !== 'Hoàn tất' && !order.kitchenCleared && kitchenStageFor(order) !== 'Đã xong' && (!query || `${order.id} ${order.customer} ${order.table || ''} ${order.items}`.toLowerCase().includes(query)));
+  const kitchenOrders = orders.filter((order) => order.status !== 'Đã hủy' && !isOrderClosed(order) && (!query || `${order.id} ${order.customer} ${order.table || ''} ${order.items}`.toLowerCase().includes(query)));
   return <div className="page-content"><div className="page-intro"><div><h2>Màn hình bếp</h2><p>Nhận món, chế biến và cập nhật trạng thái phục vụ theo thời gian thực.</p></div><span className="live-status"><span /> Bếp đang hoạt động</span></div><div className="kitchen-summary"><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Chờ chế biến').length}</strong><span>Chờ chế biến</span></div><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đang chế biến').length}</strong><span>Đang chế biến</span></div><div><strong>{kitchenOrders.filter((order) => kitchenStageFor(order) === 'Đã xong').length}</strong><span>Đã xong</span></div><label className="local-search kitchen-search"><Icon name="search" size={17} /><input value={searchValue} onChange={(event) => onSearch(event.target.value)} placeholder="Tìm mã đơn, bàn..." /></label></div><div className="kitchen-board">{kitchenStages.map((stage) => <section className={`kitchen-column ${stage === 'Đang chế biến' ? 'in-progress' : ''}`} key={stage}><div className="kitchen-column-head"><h3>{stage}</h3><span>{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length}</span></div><div className="kitchen-ticket-list">{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).map((order) => <KitchenTicket key={order.id} order={order} onStageChange={onStageChange} onSelectOrder={onSelectOrder} />)}{kitchenOrders.filter((order) => kitchenStageFor(order) === stage).length === 0 && <div className="kitchen-empty"><Icon name="chef" size={22} /><span>Chưa có món</span></div>}</div></section>)}</div></div>;
 }
 
