@@ -196,6 +196,7 @@ const allKitchenItemsDone = (order) => {
   const items = kitchenItemsFor(order);
   return items.length > 0 && items.every((item) => item.completedQuantity >= item.quantity);
 };
+const isPaidOrder = (order) => normalizedOrderValue(order?.paymentStatus) === 'paid';
 const isOrderClosed = (order) => ['hoàn tất', 'đã xong'].includes(normalizedOrderValue(order?.status)) || normalizedOrderValue(order?.paymentStatus) === 'paid' || order?.kitchenCleared === true || normalizedOrderValue(order?.kitchenStatus) === 'đã xong';
 const isKitchenArchived = (order) => ['hoàn tất', 'đã hủy'].includes(normalizedOrderValue(order?.status)) || normalizedOrderValue(order?.paymentStatus) === 'paid';
 const kitchenStageFor = (order) => {
@@ -827,7 +828,7 @@ function App({ user, onLogout }) {
     setOrders((current) => [newOrder, ...current]);
     setProducts((current) => current.map((product) => {
       const quantity = basket[product.id] || 0;
-      return quantity ? { ...product, stock: Math.max(0, product.stock - quantity), sold: product.sold + quantity, revenue: product.revenue + product.price * quantity } : product;
+      return quantity ? { ...product, stock: Math.max(0, product.stock - quantity), sold: product.sold + quantity } : product;
     }));
     setBasket({});
     setCheckoutOpen(false);
@@ -849,7 +850,19 @@ function App({ user, onLogout }) {
     if (!activeTable?.id || !activeTableOrders.length) return;
     const payableIds = new Set(activeTableOrders.map((order) => order.id));
     const paidAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const paidRevenueByProduct = new Map();
+    activeTableOrders.forEach((order) => {
+      kitchenItemsFor(order).forEach((item) => {
+        const product = products.find((entry) => entry.id === item.productId || entry.name === item.name);
+        if (!product) return;
+        paidRevenueByProduct.set(product.id, (paidRevenueByProduct.get(product.id) || 0) + product.price * item.quantity);
+      });
+    });
     setOrders((current) => current.map((order) => payableIds.has(order.id) ? { ...order, status: 'Hoàn tất', tone: 'success', paymentStatus: 'paid', payment, note, paidAt, kitchenCleared: true } : order));
+    setProducts((current) => current.map((product) => {
+      const paidRevenue = paidRevenueByProduct.get(product.id) || 0;
+      return paidRevenue ? { ...product, revenue: Number(product.revenue || 0) + paidRevenue } : product;
+    }));
     setTables((current) => current.map((table) => table.id === activeTable.id ? { ...table, status: 'Trống', orderId: null, total: 0, since: null } : table));
     setCheckoutOpen(false);
     setActiveTable(null);
@@ -958,9 +971,10 @@ function App({ user, onLogout }) {
   };
 
   const newOrders = orders.length > initialOrders.length ? orders.slice(0, orders.length - initialOrders.length) : [];
-  const todayRevenue = BASE_TODAY_STATS.revenue + newOrders.filter((order) => order.status !== 'Đã hủy').reduce((sum, order) => sum + order.total, 0);
+  const paidNewOrders = newOrders.filter(isPaidOrder);
+  const todayRevenue = BASE_TODAY_STATS.revenue + paidNewOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const todayOrderCount = BASE_TODAY_STATS.orders + newOrders.filter((order) => order.status !== 'Đã hủy').length;
-  const stats = { revenue: todayRevenue, orders: todayOrderCount, average: todayOrderCount ? Math.round(todayRevenue / todayOrderCount) : 0 };
+  const stats = { revenue: todayRevenue, orders: todayOrderCount, average: paidNewOrders.length ? Math.round(todayRevenue / paidNewOrders.length) : 0 };
 
   let content;
   if (activeView === 'overview') content = <Overview products={products} orders={orders} tables={tables} stats={stats} basket={basket} onQuantityChange={changeQuantity} onConfirmOrder={confirmOrder} onNavigate={navigate} onSelectOrder={setSelectedOrder} />;
