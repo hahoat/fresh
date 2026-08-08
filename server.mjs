@@ -137,6 +137,45 @@ function statePayload() {
   return { state: sharedState, revision, updatedAt };
 }
 
+function isOrderClosed(order) {
+  return order?.status === 'Hoàn tất'
+    || order?.paymentStatus === 'paid'
+    || order?.kitchenCleared === true
+    || order?.kitchenStatus === 'Đã xong';
+}
+
+// Each device synchronizes a full local orders array. Merge it on the server
+// so an older kitchen/staff snapshot cannot reopen a completed order.
+function mergeOrders(currentOrders, incomingOrders) {
+  const current = Array.isArray(currentOrders) ? currentOrders : [];
+  const incoming = Array.isArray(incomingOrders) ? incomingOrders : [];
+  const currentById = new Map(current.filter((order) => order && order.id != null).map((order) => [String(order.id), order]));
+  const seen = new Set();
+  const merged = incoming.map((incomingOrder) => {
+    if (!incomingOrder || typeof incomingOrder !== 'object' || incomingOrder.id == null) return incomingOrder;
+    const id = String(incomingOrder.id);
+    seen.add(id);
+    const currentOrder = currentById.get(id);
+    if (!currentOrder) return incomingOrder;
+    if (isOrderClosed(currentOrder) && !isOrderClosed(incomingOrder)) return currentOrder;
+    return { ...currentOrder, ...incomingOrder };
+  });
+
+  // A stale device may not know about a newer order yet; never delete it via PATCH.
+  current.forEach((order) => {
+    if (order && order.id != null && !seen.has(String(order.id))) merged.push(order);
+  });
+  return merged;
+}
+
+function mergeStateChanges(currentState, changes) {
+  const nextState = { ...currentState };
+  Object.entries(changes || {}).forEach(([key, value]) => {
+    nextState[key] = key === 'orders' ? mergeOrders(currentState.orders, value) : value;
+  });
+  return nextState;
+}
+
 function writeJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -223,10 +262,8 @@ function updateState(nextState) {
 
 function applyChanges(changes) {
   if (!changes || typeof changes !== 'object') return null;
-  const next = { ...(sharedState || {}) };
-  for (const key of stateKeys) {
-    if (Object.prototype.hasOwnProperty.call(changes, key) && Array.isArray(changes[key])) next[key] = changes[key];
-  }
+  const current = sharedState || normalizeState({});
+  const next = mergeStateChanges(current, changes);
   return updateState(next);
 }
 
