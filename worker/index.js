@@ -34,6 +34,30 @@ function isOrderClosed(order) {
     || order?.kitchenStatus === 'Đã xong';
 }
 
+function kitchenUpdatedAt(order) {
+  const value = Number(order?.kitchenUpdatedAt || 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function mergeKitchenState(currentOrder, incomingOrder) {
+  const currentItems = Array.isArray(currentOrder?.itemDetails) && currentOrder.itemDetails.length > 0;
+  const incomingItems = Array.isArray(incomingOrder?.itemDetails) && incomingOrder.itemDetails.length > 0;
+  const currentTimestamp = kitchenUpdatedAt(currentOrder);
+  const incomingTimestamp = kitchenUpdatedAt(incomingOrder);
+  const preserveCurrentKitchen = currentTimestamp > incomingTimestamp
+    || (currentTimestamp > 0 && incomingTimestamp === 0)
+    || (currentItems && !incomingItems);
+  if (!preserveCurrentKitchen) return { ...currentOrder, ...incomingOrder };
+  return {
+    ...currentOrder,
+    ...incomingOrder,
+    ...(currentItems ? { itemDetails: currentOrder.itemDetails } : {}),
+    ...(currentOrder.kitchenStatus != null ? { kitchenStatus: currentOrder.kitchenStatus } : {}),
+    ...(currentOrder.kitchenCleared != null ? { kitchenCleared: currentOrder.kitchenCleared } : {}),
+    ...(currentOrder.kitchenUpdatedAt != null ? { kitchenUpdatedAt: currentOrder.kitchenUpdatedAt } : {}),
+  };
+}
+
 // Each device synchronizes a full local orders array. Merge it on the server
 // so an older kitchen/staff snapshot cannot reopen a completed order.
 function mergeOrders(currentOrders, incomingOrders) {
@@ -48,7 +72,7 @@ function mergeOrders(currentOrders, incomingOrders) {
     const currentOrder = currentById.get(id);
     if (!currentOrder) return incomingOrder;
     if (isOrderClosed(currentOrder) && !isOrderClosed(incomingOrder)) return currentOrder;
-    return { ...currentOrder, ...incomingOrder };
+    return mergeKitchenState(currentOrder, incomingOrder);
   });
 
   // A stale device may not know about a newer order yet; never delete it via PATCH.
